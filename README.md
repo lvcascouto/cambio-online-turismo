@@ -6,7 +6,7 @@
 
 **Plataforma web para cotação, simulação e solicitação de operações de câmbio turismo**
 
-*Solução desenvolvida desenvolvida para digitalizar e automatizar parte do processo operacional da corretora de câmbio, com integração de dados, regras de negócio, cálculos financeiros e envio automatizado de solicitações*
+*Solução desenvolvida para digitalizar e automatizar parte do processo operacional da corretora de câmbio, com integração de dados, regras de negócio, cálculos financeiros e envio automatizado de solicitações*
 
 [![Status](https://img.shields.io/badge/status-em%20evolução-e8e4de?style=flat-square&labelColor=3437e6&color=1c1b2e)]()&nbsp;
 [![Finalidade](https://img.shields.io/badge/finalidade-freelance-e8e4de?style=flat-square&labelColor=f59e0b&color=1c1b2e)]()&nbsp;
@@ -18,10 +18,13 @@
   <a href="#projeto">Sobre</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#funcionalidades">Funcionalidades</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#arquitetura">Arquitetura</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#tecnologias">Tecnologias</a>
+  <a href="#tecnologias">Tecnologias</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <a href="#autor">Autor</a>
 </p>
 
-<h2 id="projeto">SOBRE O PROJETO</h2>
+<br>
+
+## PROJETO
 
 O **Sistema de Câmbio Online** foi desenvolvido para a **M&A Consultoria Câmbio**, com o objetivo de levar para o ambiente digital parte do processo de cotação e solicitação de operações de câmbio turismo.
 
@@ -39,7 +42,6 @@ A aplicação funciona em uma arquitetura **client-side, sem frameworks JavaScri
 -  Aplicar regras específicas do negócio diretamente na aplicação;
 -  Simplificar a experiência do cliente;
 - Facilitar o recebimento e processamento das solicitações pela equipe da consultoria.
-
 
 🌐 [Acesse a aplicação](https://cotacaoonline.maconsultoriacambio.com.br/)
 
@@ -223,7 +225,6 @@ Consulte o arquivo [LICENSE](./LICENSE) para mais informações.
 **`</>` ᴅᴇᴠᴇʟᴏᴘᴇᴅ ʙʏ**
 
 **ʟᴜᴄᴀꜱ ᴄᴏᴅᴇ // ᴡᴇʙ ᴅᴇᴠᴇʟᴏᴘᴍᴇɴᴛ ꜱᴛᴜᴅɪᴏ**  
-[**ᴡᴇʙꜱɪᴛᴇ**](https://lvcascode.com.br) ▪ [**ɪɴꜱᴛᴀɢʀᴀᴍ**](https://instagram.com/lvcascode)
+[**ᴡᴇʙꜱɪᴛᴇ**](https://lvcascode.com.br) ▪ [**ɪɴꜱᴛᴀɢʀᴀᴍ**](https://instagram.com/lvcascode) ▪ [**ʟɪɴᴋᴇᴅɪɴ**](https://linkedin.com/in/lucascouto-dev)
 
-**ʟᴜᴄᴀꜱ ᴄᴏᴜᴛᴏ // ᴡᴇʙ ᴅᴇᴠᴇʟᴏᴘᴇʀ**  
-[**ʟɪɴᴋᴇᴅɪɴ**](https://linkedin.com/in/lucascouto-dev) ▪ [**ɢɪᴛʜᴜʙ**](https://github.com/lvcascouto)
+
