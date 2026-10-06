@@ -21,7 +21,9 @@
 }
 .glass {
   background: var(--card-bg);
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.02), 0 2px 4px -1px rgb(0 0 0 / 0.02);
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.02),
+    0 2px 4px -1px rgb(0 0 0 / 0.02);
 }
 .btn-primary {
   background: linear-gradient(135deg, #d6c07a 0%, #bfa450 100%);
@@ -86,7 +88,9 @@
   left: 50%;
   margin-left: -110px;
   opacity: 0;
-  transition: opacity 0.2s, transform 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
   transform: translateY(5px);
   font-size: 0.75rem;
   line-height: 1.4;
@@ -123,10 +127,97 @@
   }
 }
 .card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05),
+  box-shadow:
+    0 10px 25px -5px rgb(0 0 0 / 0.05),
     0 8px 10px -6px rgb(0 0 0 / 0.01);
+}
+/* Botões de operação (Papel Comprar / Papel Vender / Cartão e submenu do cartão) —
+   mesmo padrão visual dos botões de moeda */
+.op-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 0.1875rem;
+  padding: 0.75rem;
+  min-height: 4.5rem;
+  border: 0.0625rem solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+.op-btn:hover {
+  background: #f9fafb;
+}
+.op-btn.is-active {
+  background: linear-gradient(135deg, #d6c07a 0%, #bfa450 100%);
+  color: #1f2937;
+}
+.icon {
+  color: #6b7280;
+}
+.op-btn-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+
+  @media (max-width: 415px) {
+    font-size: 0.75rem;
+  }
+  @media (max-width: 380px) {
+    font-size: 0.6875rem;
+  }
+
+  i {
+    margin-top: 0.0625rem;
+  }
+}
+.op-btn.is-active .op-btn-title,
+.op-btn.is-active .icon {
+  color: #1f2937;
+}
+.op-btn-sub {
+  font-size: 0.6875rem;
+  font-weight: 600;
+
+  @media (max-width: 415px) {
+    font-size: 0.625rem;
+  }
+  @media (max-width: 380px) {
+    font-size: 0.5625rem;
+  }
+}
+.op-btn-disabled,
+.op-btn-disabled:hover {
+  cursor: not-allowed;
+  background: #f9fafb;
+}
+.op-btn-disabled .op-btn-title,
+.op-btn-disabled .icon {
+  color: #9ca3af;
+}
+.op-btn-badge {
+  position: absolute;
+  top: -0.375rem;
+  right: -0.375rem;
+  font-size: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #1f2937;
+  background: #dac586;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
 }

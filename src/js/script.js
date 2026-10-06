@@ -10,7 +10,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const TEMPLATE_CLIENTE = "template_u5saecn";
   const OPERATORS = ["5511953505626", "5511938059556"];
 
-  // Tabela de isenção de frete (Valores mínimos para frete grátis)
+  // Regra do delivery: grátis a partir do equivalente a USD 500, senão R$ 30
+  const DELIVERY_FREE_MIN_USD = 500;
+  const DELIVERY_FEE_BRL = 30;
+
+  // Tabela antiga de isenção de frete — usada só como reserva se a taxa do USD
+  // não estiver disponível (a regra principal é a equivalência em USD acima)
   const DELIVERY_FREE_THRESHOLDS = {
     USD: 500,
     EUR: 500,
@@ -71,7 +76,55 @@ document.addEventListener("DOMContentLoaded", () => {
     ZAR: { isExotic: !0, minStep: 100, notes: "100 e 200", name: "Rand (ZAR)" },
   };
 
-  const CARD_RULES = { MIN_NEW_USD: 100, MIN_RELOAD_USD: 50 };
+  // --- CARTÃO PRÉ-PAGO (carga e recarga) ---
+  // Valor mínimo por moeda, igual para carga (cartão novo) e recarga (cartão M&A)
+  const CARD_MIN = {
+    USD: 50,
+    EUR: 40,
+    GBP: 30,
+    CAD: 50,
+    AUD: 50,
+    NZD: 50,
+    MXN: 900,
+    JPY: 8000,
+    CHF: 40,
+  };
+  // Moedas que só aceitam valores redondos no cartão (múltiplos do passo)
+  const CARD_STEP = { JPY: 1000 };
+  // Na carga, delivery só a partir do dobro do mínimo (ex.: mínimo USD 50 → delivery a partir de USD 100)
+  const CARD_DELIVERY_MIN_MULTIPLIER = 2;
+
+  // --- VENDA DE PAPEL-MOEDA (cliente vende, M&A compra) ---
+  // Taxas: planilha H22:I28 (já com IOF). Só estas moedas têm taxa no simulador.
+  const SELL_RATED = ["USD", "EUR", "JPY", "GBP", "CHF", "AUD", "CAD"];
+  // A M&A também compra estas, mas sem taxa no site: sob consulta via WhatsApp
+  const SELL_CONSULT = [
+    "NZD",
+    "MXN",
+    "CLP",
+    "UYU",
+    "CNY",
+    "PEN",
+    "ARS",
+    "COP",
+    "ZAR",
+  ];
+  // Linhas da planilha (índice do gviz: linha da planilha − 2) onde fica a tabela de venda.
+  // A leitura confere o código da moeda na coluna H, então o cabeçalho é ignorado.
+  const SELL_SHEET_ROWS = { from: 19, to: 28 };
+  // Mínimo e passo (menor cédula — não aceitamos moedas metálicas)
+  const SELL_RULES = {
+    USD: { min: 100, step: 1, notes: "1, 2, 5, 10, 20, 50 e 100" },
+    EUR: { min: 100, step: 5, notes: "5, 10, 20, 50, 100, 200 e 500" },
+    JPY: { min: 1000, step: 1000, notes: "1.000, 2.000, 5.000 e 10.000" },
+    GBP: { min: 100, step: 5, notes: "5, 10, 20 e 50" },
+    CHF: { min: 100, step: 10, notes: "10, 20, 50, 100, 200 e 1.000" },
+    AUD: { min: 100, step: 5, notes: "5, 10, 20, 50 e 100" },
+    CAD: { min: 100, step: 5, notes: "5, 10, 20, 50 e 100" },
+  };
+
+  // E-mails: compra e venda usam os MESMOS 2 templates do EmailJS (plano gratuito).
+  // O template mostra a versão certa pelos blocos {{#is_sell}} / {{^is_sell}}.
 
   // Elementos do DOM
   const getEl = (id) => document.getElementById(id);
@@ -106,6 +159,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const clientPhone = getEl("clientPhone");
   const deliveryCheck = getEl("deliveryCheck");
   const deliveryFields = getEl("deliveryFields");
+  // Novos elementos (operação, venda e cartão)
+  const btnVenda = getEl("btnVenda");
+  const btnCarga = getEl("btnCarga");
+  const btnRecarga = getEl("btnRecarga");
+  const btnDescarga = getEl("btnDescarga");
+  const opBackBtn = getEl("opBackBtn");
+  const opMain = getEl("opMain");
+  const opCard = getEl("opCard");
+  const opTitle = getEl("opTitle");
+  const opSubtitle = getEl("opSubtitle");
+  const currencyListHint = getEl("currencyListHint");
+  const resultLabel = getEl("resultLabel");
+  const comparisonHint = getEl("comparisonHint");
+  const modalTotalLabel = getEl("modalTotalLabel");
+  const deliveryBlock = getEl("deliveryBlock");
+  const deliveryToggle = getEl("deliveryToggle");
+  const deliveryRestriction = getEl("deliveryRestriction");
+  const storeBlock = getEl("storeBlock");
+  const paymentBlock = getEl("paymentBlock");
+  const pixFields = getEl("pixFields");
+  const tedFields = getEl("tedFields");
+  const successNextStep = getEl("successNextStep");
 
   // Salva o HTML original do botão para restaurar depois
   const originalBuyBtnHTML = buyBtn ? buyBtn.outerHTML : null;
@@ -189,11 +264,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // Variáveis de Estado
   let ratesPapel = {};
   let ratesCartao = {};
+  let ratesVenda = {};
+  // currentMode: "papel" (comprar papel), "venda" (vender papel) ou "cartao"
+  // cardOp (só no cartão): "carga" (cartão novo) ou "recarga" (cartão M&A)
   let currentMode = "";
+  let cardOp = "carga";
   let available = {};
   let lastFetchTime = null;
   let countdownInterval;
   let currentQuote = null;
+  // Controle de envio dos e-mails da solicitação (zerado a cada abertura do modal)
+  let emailStatus = { admin: false, client: false };
+  const EMAIL_TIMEOUT_MS = 20000;
 
   // Formatadores
   function formatBRL(v) {
@@ -208,6 +290,50 @@ document.addEventListener("DOMContentLoaded", () => {
       minimumFractionDigits: 4,
       maximumFractionDigits: 4,
     }).format(v);
+  }
+
+  // Quantidade de moeda estrangeira no padrão brasileiro (ex.: 1.000,00)
+  function formatAmount(v) {
+    return Number(v).toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function getRatesForMode(mode) {
+    if (mode === "venda") return ratesVenda;
+    if (mode === "cartao") return ratesCartao;
+    return ratesPapel;
+  }
+
+  function isSellConsult(code) {
+    return currentMode === "venda" && !!ratesVenda[code]?.isConsult;
+  }
+
+  // Nome da operação para e-mails e mensagens
+  function getOperationLabel(quote) {
+    if (quote.mode === "venda") return "Papel Moeda — Venda";
+    if (quote.mode === "cartao")
+      return quote.cardOp === "recarga"
+        ? "Cartão Pré-pago — Recarga (cartão M&A)"
+        : "Cartão Pré-pago — Carga (cartão novo)";
+    return "Papel Moeda — Compra";
+  }
+
+  function pickOperator() {
+    const phoneDigits = (getEl("clientPhone")?.value || "").replace(/\D/g, "");
+    const idx =
+      phoneDigits.length > 0
+        ? parseInt(phoneDigits.charAt(phoneDigits.length - 1), 10) % 2
+        : Date.now() % 2;
+    return OPERATORS[idx];
+  }
+
+  function openWhatsApp(operator, msg) {
+    window.open(
+      `https://api.whatsapp.com/send?phone=${operator}&text=${formatarMsgWhatsApp(msg)}`,
+      "_blank",
+    );
   }
 
   function formatarMsgWhatsApp(texto) {
@@ -375,13 +501,44 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
 
+      // Processa Venda de papel-moeda (Colunas 7 e 8 - H e I, linhas 22 a 28 da planilha)
+      const sellFromSheet = {};
+      for (let i = SELL_SHEET_ROWS.from; i <= SELL_SHEET_ROWS.to; i++) {
+        const r = rows[i];
+        if (!r) continue;
+        const code = String(r.c[7]?.v ?? "").trim();
+        if (!SELL_RATED.includes(code)) continue; // ignora cabeçalho/linhas vazias
+        const valFormatted = r.c[8]?.f;
+        const value = valFormatted
+          ? Number(String(valFormatted).replace(",", "."))
+          : Number(r.c[8]?.v);
+        if (value > 0) {
+          sellFromSheet[code] = {
+            raw: value,
+            display: valFormatted || String(r.c[8]?.v),
+          };
+        }
+      }
+      ratesVenda = {};
+      SELL_RATED.forEach((code) => {
+        // Sem taxa válida na planilha → vira "sob consulta" (WhatsApp)
+        ratesVenda[code] = sellFromSheet[code] || {
+          raw: 0,
+          display: "Consulta",
+          isConsult: true,
+        };
+      });
+      SELL_CONSULT.forEach((code) => {
+        ratesVenda[code] = { raw: 0, display: "Consulta", isConsult: true };
+      });
+
       if (dataStatus) {
         dataStatus.innerHTML = `<i class="ph-bold ph-check-circle"></i> Atualizado`;
         setTimeout(() => dataStatus.classList.add("hidden"), 1500);
       }
 
       if (currentMode) {
-        available = currentMode === "papel" ? ratesPapel : ratesCartao;
+        available = getRatesForMode(currentMode);
         populateCurrencyList();
       }
 
@@ -395,6 +552,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("❌ Erro crítico ao buscar taxas:", err);
       ratesPapel = {};
       ratesCartao = {};
+      ratesVenda = {};
 
       if (dataStatus) {
         dataStatus.className =
@@ -481,10 +639,31 @@ document.addEventListener("DOMContentLoaded", () => {
   // }
 
   function calculateConversion(mode, currencyCode, amount) {
-    const ratesObj = mode === "papel" ? ratesPapel : ratesCartao;
+    const ratesObj = getRatesForMode(mode);
     const data = ratesObj[currencyCode];
 
     if (!data) return null;
+
+    // VENDA: a taxa da planilha já vem com IOF. O cliente recebe quantidade × taxa.
+    if (mode === "venda") {
+      const VET = Number(data.raw);
+      const totalBRL_cents = Math.round(amount * VET * 100);
+      return {
+        mode,
+        cardOp: null,
+        isSell: true,
+        currencyCode,
+        amount,
+        cotaçãoBase: VET,
+        conversionBase: totalBRL_cents / 100,
+        iofRate: 0,
+        totalIOFValue: 0,
+        totalBRL: totalBRL_cents / 100,
+        VET: VET,
+        rateDisplay: data.display,
+        time: lastFetchTime || new Date(),
+      };
+    }
 
     const IOF_RATE = 0.035;
 
@@ -508,6 +687,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return {
       mode,
+      cardOp: mode === "cartao" ? cardOp : null,
+      isSell: false,
       currencyCode,
       amount,
       cotaçãoBase: baseRate,
@@ -616,31 +797,60 @@ document.addEventListener("DOMContentLoaded", () => {
     return { valid: !0 };
   }
 
+  // CARTÃO (carga e recarga): mínimo por moeda e valores redondos para o iene
   function validateCardAmount(currency, amount) {
     if (currentMode !== "cartao") return { valid: !0 };
-    if (!ratesCartao.USD || !ratesCartao[currency]) return { valid: !0 };
-
-    const rateUSD = ratesCartao.USD.raw;
-    const rateTarget = ratesCartao[currency].raw;
-    const minReloadTarget = (CARD_RULES.MIN_RELOAD_USD * rateUSD) / rateTarget;
-    const minNewTarget = (CARD_RULES.MIN_NEW_USD * rateUSD) / rateTarget;
-    const minReloadDisplay = minReloadTarget.toFixed(2);
-    const minNewDisplay = minNewTarget.toFixed(2);
-
-    if (amount < minReloadTarget) {
+    const opName = cardOp === "recarga" ? "recarga" : "carga";
+    const min = CARD_MIN[currency];
+    if (min && amount < min) {
       return {
         valid: !1,
-        msg: `O valor mínimo para recarga é de USD ${CARD_RULES.MIN_RELOAD_USD} (aprox. ${currency} ${minReloadDisplay}).`,
+        msg: `Valor abaixo do mínimo permitido. Para ${opName} de cartão em ${currency}, o mínimo é ${currency} ${formatAmount(min)}.`,
       };
     }
-    if (amount >= minReloadTarget && amount < minNewTarget) {
+    const step = CARD_STEP[currency];
+    if (step && amount % step !== 0) {
       return {
-        valid: !0,
-        isReloadOnly: !0,
-        warningMsg: `Atenção: Valores abaixo de USD ${CARD_RULES.MIN_NEW_USD} (aprox. ${currency} ${minNewDisplay}) são permitidos apenas para RECARGA de cartão existente.`,
+        valid: !1,
+        msg: `Para ${currency} no cartão, apenas valores redondos, em múltiplos de ${step.toLocaleString("pt-BR")} (ex.: ${min.toLocaleString("pt-BR")}, ${(min + step).toLocaleString("pt-BR")}).`,
       };
     }
-    return { valid: !0, isReloadOnly: !1 };
+    return { valid: !0 };
+  }
+
+  // VENDA: só cédulas (sem moedas metálicas), mínimo e múltiplo da menor cédula
+  function validateSellAmount(currency, amount) {
+    if (currentMode !== "venda") return { valid: !0 };
+    if (!Number.isInteger(amount)) {
+      return {
+        valid: !1,
+        msg: "Na venda, informe apenas valores inteiros em cédulas. Não aceitamos moedas metálicas.",
+      };
+    }
+    const rule = SELL_RULES[currency];
+    if (isSellConsult(currency) || !rule) return { valid: !0 };
+    if (amount < rule.min) {
+      return {
+        valid: !1,
+        msg: `O valor mínimo para venda de ${currency} é ${currency} ${rule.min.toLocaleString("pt-BR")}.`,
+      };
+    }
+    if (amount % rule.step !== 0) {
+      return {
+        valid: !1,
+        msg: `Para ${currency}, o valor deve ser múltiplo de ${rule.step.toLocaleString("pt-BR")} (menor cédula aceita). Cédulas aceitas: ${rule.notes}. Não aceitamos moedas metálicas.`,
+      };
+    }
+    return { valid: !0 };
+  }
+
+  function setInputHint(html) {
+    const hint = document.createElement("div");
+    hint.id = "inputHint";
+    hint.className =
+      "text-xs text-gray-500 mt-1 font-medium flex items-start gap-1";
+    hint.innerHTML = `<i class="ph-bold ph-info text-[#d6c07a] mt-0.5"></i><span>${html}</span>`;
+    amountInput.parentNode.appendChild(hint);
   }
 
   function updateInputHelper() {
@@ -654,13 +864,36 @@ document.addEventListener("DOMContentLoaded", () => {
       amountInput.step = rule.minStep;
       amountInput.min = rule.minStep;
       amountInput.placeholder = `Múltiplos de ${rule.minStep}`;
-
-      const hint = document.createElement("div");
-      hint.id = "inputHint";
-      hint.className =
-        "text-xs text-gray-500 mt-1 font-medium flex items-center gap-1";
-      hint.innerHTML = `<i class="ph-bold ph-info text-[#d6c07a]"></i> Notas disponíveis: ${rule.notes}`;
-      amountInput.parentNode.appendChild(hint);
+      setInputHint(`Notas disponíveis: ${rule.notes}`);
+    } else if (currentMode === "venda") {
+      const rule = SELL_RULES[currency];
+      if (isSellConsult(currency) || !rule) {
+        amountInput.step = "1";
+        amountInput.min = "1";
+        amountInput.placeholder = "Exemplo: 500";
+        setInputHint(
+          "Cotação sob consulta: o especialista informa a taxa pelo WhatsApp. Apenas cédulas (sem moedas metálicas).",
+        );
+      } else {
+        amountInput.step = rule.step;
+        amountInput.min = rule.min;
+        amountInput.placeholder = `Mínimo ${rule.min.toLocaleString("pt-BR")}`;
+        setInputHint(
+          `Mínimo ${currency} ${rule.min.toLocaleString("pt-BR")} · Cédulas aceitas: ${rule.notes} (sem moedas metálicas)`,
+        );
+      }
+    } else if (currentMode === "cartao" && CARD_MIN[currency]) {
+      const min = CARD_MIN[currency];
+      const step = CARD_STEP[currency];
+      amountInput.step = step || "0.01";
+      amountInput.min = min;
+      amountInput.placeholder = `Mínimo ${min.toLocaleString("pt-BR")}`;
+      let hint = `Mínimo para ${cardOp === "recarga" ? "recarga" : "carga"}: ${currency} ${min.toLocaleString("pt-BR")}`;
+      if (step)
+        hint += ` · Apenas valores redondos (múltiplos de ${step.toLocaleString("pt-BR")})`;
+      if (cardOp === "carga")
+        hint += ` · Delivery a partir de ${currency} ${(min * CARD_DELIVERY_MIN_MULTIPLIER).toLocaleString("pt-BR")}`;
+      setInputHint(hint);
     } else {
       amountInput.step = "0.01";
       amountInput.min = "0";
@@ -668,7 +901,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function setMode(mode) {
+  function setMode(mode, op) {
+    if (mode === "cartao" && op) cardOp = op;
     if (Object.keys(ratesPapel).length === 0) {
       fetchSheetRates().then(() => setModeUI(mode));
     } else {
@@ -676,27 +910,59 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Menu de operação: principal (Papel Comprar / Papel Vender / Cartão)
+  // ou submenu do cartão (Carga / Recarga / Descarga)
+  let cardMenuOpen = false;
+
+  function renderOperationMenu() {
+    const setActive = (btn, active) => {
+      if (btn) btn.classList.toggle("is-active", !!active);
+    };
+    setActive(btnPapel, currentMode === "papel");
+    setActive(btnVenda, currentMode === "venda");
+    setActive(btnCartao, currentMode === "cartao");
+    setActive(btnCarga, currentMode === "cartao" && cardOp === "carga");
+    setActive(btnRecarga, currentMode === "cartao" && cardOp === "recarga");
+
+    if (opMain) opMain.classList.toggle("hidden", cardMenuOpen);
+    if (opCard) opCard.classList.toggle("hidden", !cardMenuOpen);
+    if (opBackBtn) opBackBtn.classList.toggle("hidden", !cardMenuOpen);
+    if (opTitle)
+      opTitle.textContent = cardMenuOpen ? "Cartão Pré-pago" : "Operação";
+    if (opSubtitle)
+      opSubtitle.textContent = cardMenuOpen
+        ? "Selecione o tipo da sua operação"
+        : "Selecione o tipo da sua operação entre Papel-Moeda ou Cartão Pré-pago";
+  }
+
+  function updateCurrencyListHint() {
+    if (!currencyListHint) return;
+    const hints = {
+      papel: "Selecione a moeda estrangeira que deseja comprar",
+      venda:
+        "Valor que a M&A paga por unidade (taxas válidas para cédulas de série atual)",
+      carga: "Selecione a moeda da carga do seu cartão novo",
+      recarga: "Selecione a moeda da recarga do seu cartão M&A",
+    };
+    const key = currentMode === "cartao" ? cardOp : currentMode;
+    currencyListHint.textContent =
+      hints[key] || "Selecione a moeda estrangeira de sua preferência";
+  }
+
   function setModeUI(mode) {
     currentMode = mode;
-    available = mode === "papel" ? ratesPapel : ratesCartao;
+    available = getRatesForMode(mode);
 
-    const activeClass =
-      "flex-1 px-4 py-2 rounded-lg btn-primary font-semibold text-gray-900 text-sm transition-all flex items-center justify-center gap-2";
-    const inactiveClass =
-      "flex-1 px-4 py-2 rounded-lg border bg-white font-semibold text-gray-500 text-sm transition-all flex items-center justify-center gap-2";
-
-    if (btnPapel)
-      btnPapel.className = mode === "papel" ? activeClass : inactiveClass;
-    if (btnCartao)
-      btnCartao.className = mode === "cartao" ? activeClass : inactiveClass;
-
+    renderOperationMenu();
+    updateCurrencyListHint();
     populateCurrencyList();
     fillSelector();
     updateInputHelper();
+    if (errorMsg) errorMsg.classList.add("hidden");
 
     const currentCurrency = fromSel.value;
 
-    // Se tiver moeda e valor, já recalcula ao trocar de aba
+    // Se tiver moeda e valor, já recalcula ao trocar de operação
     if (currentCurrency && available[currentCurrency] && amountInput.value) {
       highlightSelectedCurrency(currentCurrency);
       updateDisplayConversion();
@@ -721,31 +987,65 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const w = document.getElementById("closedWarning");
     if (w) w.remove();
-    // Remove também o aviso amarelo das exóticas se existir
-    const exoticWarning = document.querySelector(".exotic-warning");
-    if (exoticWarning) exoticWarning.remove();
+    // Remove também os avisos (exóticas, venda sob consulta, recarga) se existirem
+    document.querySelectorAll(".exotic-warning").forEach((el) => el.remove());
   }
 
-  if (btnPapel) btnPapel.onclick = () => setMode("papel");
-  if (btnCartao) btnCartao.onclick = () => setMode("cartao");
+  if (btnPapel)
+    btnPapel.onclick = () => {
+      cardMenuOpen = false;
+      setMode("papel");
+    };
+  if (btnVenda)
+    btnVenda.onclick = () => {
+      cardMenuOpen = false;
+      setMode("venda");
+    };
+  if (btnCartao)
+    btnCartao.onclick = () => {
+      cardMenuOpen = true;
+      setMode("cartao", cardOp || "carga");
+    };
+  if (btnCarga) btnCarga.onclick = () => setMode("cartao", "carga");
+  if (btnRecarga) btnRecarga.onclick = () => setMode("cartao", "recarga");
+  if (btnDescarga)
+    btnDescarga.onclick = (e) => {
+      e.preventDefault();
+      showError(
+        "A descarga de cartão pela plataforma estará disponível em breve. Para descarga agora, fale com um especialista em Fale Conosco.",
+      );
+    };
+  if (opBackBtn)
+    opBackBtn.onclick = () => {
+      cardMenuOpen = false;
+      renderOperationMenu();
+    };
 
   function populateCurrencyList() {
     currencyList.innerHTML = "";
     Object.keys(available).forEach((code) => {
       const btn = document.createElement("button");
       const isSelected = fromSel.value === code;
-      const isExoticDisplay = PAPER_RULES[code]?.isExotic;
+      const isExoticDisplay =
+        currentMode === "papel" && PAPER_RULES[code]?.isExotic;
+      const isConsultDisplay = isSellConsult(code);
 
       // Valor da taxa
       const rateValue = `R$ ${formatRate(available[code].raw)}`;
 
-      // Se for exótica, adiciona o texto "Sob Consulta" pequeno embaixo
-      const rateDisplay = isExoticDisplay
-        ? `<div class="flex flex-col items-start">
+      let rateDisplay;
+      if (isConsultDisplay) {
+        // Venda sem taxa no simulador: só a tag "Sob Consulta"
+        rateDisplay = `<span class="text-[9px] uppercase tracking-wide text-red-400 bg-red-50 px-1.5 py-0.5 rounded">Sob Consulta</span>`;
+      } else if (isExoticDisplay) {
+        // Exótica (compra): taxa em vermelho + "Sob Consulta"
+        rateDisplay = `<div class="flex flex-col items-start">
              <span class="text-red-500 font-bold">${rateValue}</span>
              <span class="text-[9px] uppercase tracking-wide text-red-400 bg-red-50 px-1.5 py-0.5 rounded mt-0.5">Sob Consulta</span>
-           </div>`
-        : `<span class="text-gray-500">${rateValue}</span>`;
+           </div>`;
+      } else {
+        rateDisplay = `<span class="text-gray-500">${rateValue}</span>`;
+      }
 
       btn.className = `text-left p-3 rounded-lg border transition-all h-full flex flex-col justify-center ${
         isSelected
@@ -826,111 +1126,174 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // --- AVISO E BOTÃO PARA EXÓTICAS (MODIFICADO) ---
-  function displayExoticWarning(currencyCode, amount, res) {
-    const currencyName = PAPER_RULES[currencyCode].name;
-    const oldBuyBtn = getEl("buyBtn");
+  const CLOSED_ALERT_MSG =
+    "Para solicitar e finalizar sua operação, nosso atendimento funciona de Segunda a Sexta, das 09h30 às 18h00. Fora desse horário (período noturno), finais de semana e feriados, o sistema de solicitação permanece fechado.";
 
-    // Formata os valores usando os dados que vieram do cálculo (res)
-    const formattedTotal = formatBRL(res.totalBRL);
-    const formattedVET = formatRate(res.VET);
-    const formattedIOF = formatBRL(res.totalIOFValue);
-    const formattedBase = formatRate(res.cotaçãoBase);
+  // Troca o botão de ação do resultado. Fora do horário comercial vira
+  // "Atendimento Encerrado" (simulação continua liberada).
+  //  - style "gold": abre o formulário (compra, venda, carga)
+  //  - style "whatsapp": vai direto ao WhatsApp (exótica, venda sob consulta, recarga)
+  function setActionButton({ label, style, onClick }) {
+    const oldBtn = getEl("buyBtn");
+    if (!oldBtn) return;
+    const existingWarning = getEl("closedWarning");
+    if (existingWarning) existingWarning.remove();
 
-    // VERIFICA SE ESTÁ ABERTO
-    const isOpen = isMarketOpen();
+    const btn = document.createElement("button");
+    btn.id = "buyBtn";
+    btn.type = "button";
 
-    const prevWarning = document.querySelector(".exotic-warning");
-    if (prevWarning) prevWarning.remove();
-
-    const prevClosed = document.getElementById("closedWarning");
-    if (prevClosed) prevClosed.remove();
-
-    // 1. Injeta o aviso Amarelo
-    const warningHTML = `
-      <div class="exotic-warning mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg animate-pulse">
-        <div class="text-sm font-bold text-yellow-800 flex items-center gap-2">
-          <i class="ph-bold ph-warning-circle text-xl"></i> Cotação Sujeita a Confirmação
-        </div>
-        <p class="text-xs text-yellow-700 mt-1">
-          O valor de <strong>${formattedTotal}</strong> é uma estimativa baseada na taxa de fechamento, e a cotação pode sofrer alterações por ser uma moeda exótica, ${currencyName}. Portanto, a operação deve ser confirmada diretamente com a mesa.
-        </p>
-      </div>`;
-
-    calcDetails.insertAdjacentHTML("afterbegin", warningHTML);
-
-    // 2. LÓGICA DO BOTÃO
-    if (isOpen) {
-      oldBuyBtn.outerHTML = `<button id="buyBtn" class="group mt-4 w-full h-14 px-4 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2"><i class="ph-bold ph-whatsapp-logo text-xl"></i> Confirmar no WhatsApp</button>`;
-
-      const newBtn = getEl("buyBtn");
-      newBtn.onclick = (e) => {
+    if (!isMarketOpen()) {
+      btn.className =
+        "group mt-4 w-full h-14 px-4 rounded-xl bg-gray-400 cursor-not-allowed text-white font-bold text-lg shadow-none flex items-center justify-center gap-2";
+      btn.innerHTML = `<i class="ph-bold ph-clock-afternoon"></i> Atendimento Encerrado`;
+      btn.onclick = (e) => {
         e.preventDefault();
-        /*const randomIndex = Math.random() < 0.5 ? 0 : 1;*/
-        const randomIndex = Date.now() % 2;
-        const selectedOperator = OPERATORS[randomIndex];
-
-        // --- MENSAGEM DETALHADA AQUI ---
-        //         const msg = `Olá, M&A Consultoria Câmbio! Realizei uma simulação de moeda exótica no site:
-
-        // *MOEDA:* ${currencyCode} (${currencyName})
-        // *QUANTIDADE:* ${amount}
-
-        // *DETALHES DA ESTIMATIVA:*
-        // 📉 Cotação Base: R$ ${formattedBase}
-        // 💸 IOF: ${formattedIOF}
-        // 📊 VET Final: R$ ${formattedVET}
-
-        // *💰 TOTAL A PAGAR: ${formattedTotal}*
-
-        // Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.`;
-
-        //         window.open(
-        //           `https://api.whatsapp.com/send?phone=${OPERATORS[randomIndex]}&text=${encodeURIComponent(msg)}`,
-        //           "_blank",
-        //         );
-        const msg = `Olá, M&A Consultoria Câmbio! Realizei uma simulação de moeda exótica no site:
-          
-*MOEDA:* ${currencyCode} (${currencyName})
-*QUANTIDADE:* ${amount}
-
-*DETALHES DA ESTIMATIVA:*
-📉 Cotação Base: R$ ${formattedBase}
-💸 IOF: ${formattedIOF}
-📊 VET Final: R$ ${formattedVET}
-
-*💰 TOTAL A PAGAR: ${formattedTotal}*
-
-Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.`;
-
-        window.open(
-          `https://api.whatsapp.com/send?phone=${OPERATORS[randomIndex]}&text=${formatarMsgWhatsApp(msg)}`,
-          "_blank",
-        );
-        setTimeout(() => window.location.reload(), 2000);
+        alert(CLOSED_ALERT_MSG);
       };
-    } else {
-      oldBuyBtn.outerHTML = `<button id="buyBtn" class="group mt-4 w-full h-14 px-4 rounded-xl bg-gray-400 cursor-not-allowed text-white font-bold text-lg shadow-none flex items-center justify-center gap-2"><i class="ph-bold ph-clock-afternoon"></i> Atendimento Encerrado</button>`;
-
-      const newBtn = getEl("buyBtn");
-      newBtn.onclick = (e) => {
-        e.preventDefault();
-        alert(
-          "Para solicitar e finalizar a compra da moeda, nosso atendimento funciona de Segunda a Sexta, das 09h30 às 18h00. Fora desse horário, o sistema permanece fechado.",
-        );
-      };
-
+      oldBtn.replaceWith(btn);
       const warningBox = document.createElement("div");
       warningBox.id = "closedWarning";
       warningBox.className =
         "mt-3 text-center text-xs text-red-500 font-medium bg-red-50 p-2 rounded border border-red-100 animate-pulse";
       warningBox.innerHTML =
-        "O mercado está fechado. Solicitações apenas em horário comercial.";
-      newBtn.parentNode.appendChild(warningBox);
+        "O mercado está fechado. Simulações liberadas, solicitações apenas em horário comercial.";
+      btn.parentNode.appendChild(warningBox);
+    } else {
+      btn.className =
+        style === "whatsapp"
+          ? "group mt-4 w-full h-14 px-4 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2"
+          : "group mt-4 w-full h-14 px-4 rounded-xl bg-gold hover:bg-gold-hover text-gray-700 font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2";
+      btn.innerHTML =
+        style === "whatsapp"
+          ? `<i class="ph-bold ph-whatsapp-logo text-xl"></i> ${label}`
+          : `${label} <i class="ph-bold ph-arrow-right text-xl transition-transform group-hover:translate-x-1.5"></i>`;
+      btn.onclick = (e) => {
+        e.preventDefault();
+        onClick();
+      };
+      oldBtn.replaceWith(btn);
     }
+    window.buyBtn = btn;
   }
 
-  // --- FUNÇÃO DE EXIBIÇÃO PRINCIPAL (ATUALIZADA) ---
+  // Aviso destacado no topo dos detalhes do resultado
+  function insertResultNotice(title, text, tone) {
+    const tones = {
+      yellow: [
+        "bg-yellow-50 border-yellow-200",
+        "text-yellow-800",
+        "text-yellow-700",
+      ],
+      blue: ["bg-blue-50 border-blue-100", "text-blue-800", "text-blue-700"],
+      gray: ["bg-gray-50 border-gray-200", "text-gray-800", "text-gray-600"],
+    };
+    const [box, titleColor, textColor] = tones[tone] || tones.yellow;
+    calcDetails.insertAdjacentHTML(
+      "afterbegin",
+      `<div class="exotic-warning mb-4 p-3 border rounded-lg ${box}">
+        <div class="text-sm font-bold ${titleColor} flex items-center gap-2">
+          <i class="ph-bold ph-warning-circle text-xl"></i> ${title}
+        </div>
+        <p class="text-xs ${textColor} mt-1 leading-relaxed">${text}</p>
+      </div>`,
+    );
+  }
+
+  // Envia ao WhatsApp e recarrega a página (mesmo comportamento das exóticas)
+  function sendToWhatsAppAndReset(msg) {
+    openWhatsApp(OPERATORS[Date.now() % 2], msg);
+    setTimeout(() => window.location.reload(), 2000);
+  }
+
+  // --- COMPRA DE EXÓTICAS: aviso + botão WhatsApp ---
+  function displayExoticWarning(currencyCode, amount, res) {
+    const currencyName = PAPER_RULES[currencyCode].name;
+    const formattedTotal = formatBRL(res.totalBRL);
+
+    insertResultNotice(
+      "Cotação Sujeita a Confirmação",
+      `O valor de <strong>${formattedTotal}</strong> é uma estimativa baseada na taxa de fechamento, e a cotação pode sofrer alterações por ser uma moeda exótica, ${currencyName}. Portanto, a operação deve ser confirmada diretamente com a mesa.`,
+      "yellow",
+    );
+
+    setActionButton({
+      label: "Confirmar no WhatsApp",
+      style: "whatsapp",
+      onClick: () => {
+        const msg = `Olá, M&A Consultoria Câmbio! 😊
+
+Fiz uma simulação de *compra de moeda exótica* no site:
+
+• *Moeda:* ${formatAmount(amount)} ${currencyCode} (${currencyName})
+• *Cotação Turismo:* R$ ${formatRate(res.cotaçãoBase)}
+• *IOF:* ${formatBRL(res.totalIOFValue)}
+• *VET estimado:* R$ ${formatRate(res.VET)}
+
+👉 *TOTAL ESTIMADO: ${formattedTotal}*
+
+Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.`;
+        sendToWhatsAppAndReset(msg);
+      },
+    });
+  }
+
+  function renderQuoteTime(time) {
+    if (!quoteTime) return;
+    quoteTime.innerHTML = `<i class="ph-bold ph-clock"></i> Cotação: ${time.toLocaleDateString(
+      "pt-BR",
+      { timeZone: "America/Sao_Paulo" },
+    )} às ${time.toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    })}`;
+  }
+
+  const SELL_NOTES_NOTICE =
+    "Taxas válidas para <strong>cédulas de série atual</strong>. Cédulas de séries antigas, somente com o especialista pelo WhatsApp. Não compramos cédulas rabiscadas, manchadas ou rasgadas, nem moedas metálicas. As cédulas são entregues por você na <strong>loja M&A mais próxima do seu CEP</strong>.";
+
+  // --- VENDA SEM TAXA NO SIMULADOR (sob consulta) ---
+  function renderSellConsult(currencyCode, amount) {
+    currentQuote = null;
+    resultCard.classList.remove("hidden");
+    resultCard.classList.add("fade-in");
+    if (resultLabel) resultLabel.textContent = "Valor Total a Receber";
+    resultValue.textContent = "Sob consulta";
+    renderQuoteTime(lastFetchTime || new Date());
+
+    calcDetails.innerHTML = `
+      <div class="flex justify-between text-sm border-b pb-2 mb-2">
+        <span class="text-gray-600">Quantidade</span>
+        <span class="font-mono">${formatAmount(amount)} ${currencyCode}</span>
+      </div>
+      <div class="flex justify-between text-sm pt-1">
+        <span class="text-gray-600">Taxa de venda unitária</span>
+        <span class="font-mono font-bold text-[#d6c07a]">Sob consulta</span>
+      </div>`;
+    insertResultNotice(
+      "Cotação sob consulta",
+      `A M&A compra ${currencyCode}, mas a taxa desta moeda é informada diretamente pelo especialista no WhatsApp. ${SELL_NOTES_NOTICE}`,
+      "yellow",
+    );
+
+    updateComparison(currencyCode, amount);
+
+    setActionButton({
+      label: "Consultar no WhatsApp",
+      style: "whatsapp",
+      onClick: () => {
+        const msg = `Olá, M&A Consultoria Câmbio! 😊
+
+Gostaria de *vender papel-moeda* e consultar a cotação:
+
+• *Moeda:* ${formatAmount(amount)} ${currencyCode}
+
+Pode me informar a taxa e a loja mais próxima para eu levar as cédulas?`;
+        sendToWhatsAppAndReset(msg);
+      },
+    });
+  }
+
+  // --- FUNÇÃO DE EXIBIÇÃO PRINCIPAL ---
   function updateDisplayConversion() {
     const from = fromSel.value;
     const amount = parseFloat(amountInput.value);
@@ -940,63 +1303,69 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
       return;
     }
 
-    // Restaura botão padrão antes de tudo
+    // Restaura botão padrão e remove avisos antes de tudo
     restoreBuyBtn();
 
-    // 1. Validação de Notas (Inclui Exóticas agora)
-    const validation = validatePaperAmount(from, amount);
-    if (!validation.valid) {
-      showError(validation.msg);
+    // 1. Validações por operação
+    const validations = [
+      validatePaperAmount(from, amount),
+      validateSellAmount(from, amount),
+      validateCardAmount(from, amount),
+    ];
+    const failed = validations.find((v) => !v.valid);
+    if (failed) {
+      showError(failed.msg);
       resultCard.classList.add("hidden");
+      comparisonGrid.innerHTML = "";
+      currentQuote = null;
       return;
     }
+    if (errorMsg) errorMsg.classList.add("hidden");
 
-    // 2. Validação de Cartão
-    const cardValidation = validateCardAmount(from, amount);
-    if (!cardValidation.valid) {
-      showError(cardValidation.msg);
-      resultCard.classList.add("hidden");
+    // 2. Venda de moeda sem taxa no simulador → sob consulta (WhatsApp)
+    if (isSellConsult(from)) {
+      renderSellConsult(from, amount);
       return;
-    }
-
-    if (cardValidation.isReloadOnly) {
-      const warningDiv = document.getElementById("errorMsg");
-      warningDiv.innerHTML = `<i class="ph-bold ph-warning"></i> ${cardValidation.warningMsg}`;
-      warningDiv.className =
-        "text-orange-600 text-sm mt-3 font-medium bg-orange-50 p-2 rounded border border-orange-100 fade-in block";
-    } else {
-      document.getElementById("errorMsg").classList.add("hidden");
     }
 
     // 3. Cálculo
     const res = calculateConversion(currentMode, from, amount);
 
-    // Se não tiver taxa (ou for 0), esconde
     if (!res || res.VET === 0) {
-      // Se for exótica e não tiver taxa na planilha, cai aqui.
-      // Se quiser tratar esse erro específico, pode por um aviso.
       showError("Taxa não disponível para esta moeda no momento.");
       resultCard.classList.add("hidden");
+      currentQuote = null;
       return;
     }
 
     currentQuote = res;
     resultCard.classList.remove("hidden");
     resultCard.classList.add("fade-in");
+    if (resultLabel)
+      resultLabel.textContent = res.isSell
+        ? "Valor Total a Receber"
+        : "Valor Total (VET)";
     resultValue.textContent = formatBRL(res.totalBRL);
+    renderQuoteTime(res.time);
 
-    if (quoteTime)
-      quoteTime.innerHTML = `<i class="ph-bold ph-clock"></i> Cotação: ${res.time.toLocaleDateString(
-        "pt-BR",
-        { timeZone: "America/Sao_Paulo" },
-      )} às ${res.time.toLocaleTimeString("pt-BR", {
-        timeZone: "America/Sao_Paulo",
-      })}`;
-
-    // Renderiza Detalhes
+    // 4. Detalhes
     if (calcDetails) {
-      const iofPct = (res.iofRate * 100).toFixed(2).replace(".", ",");
-      calcDetails.innerHTML = `
+      if (res.isSell) {
+        calcDetails.innerHTML = `
+        <div class="flex justify-between text-sm border-b pb-2 mb-2">
+          <span class="text-gray-600">Quantidade</span>
+          <span class="font-mono">${formatAmount(res.amount)} ${res.currencyCode}</span>
+        </div>
+        <div class="flex justify-between text-sm pt-1">
+          <span class="text-gray-600 flex items-center gap-1">Taxa de Venda Unitária
+            <span class="tooltip"><i class="ph-bold ph-info cursor-pointer hover:text-[#d6c07a] transition-colors"></i><span class="tooltiptext font-normal normal-case tracking-normal text-left">Valor que a M&A paga por unidade da moeda, já com o IOF considerado. O total a receber é a quantidade multiplicada por esta taxa.</span></span>
+          </span>
+          <span class="font-mono font-bold text-[#d6c07a]">R$ ${formatRate(res.VET)}</span>
+        </div>`;
+        insertResultNotice("Atenção às cédulas", SELL_NOTES_NOTICE, "gray");
+      } else {
+        const iofPct = (res.iofRate * 100).toFixed(2).replace(".", ",");
+        calcDetails.innerHTML = `
         <div class="flex justify-between text-sm border-b pb-2 mb-2">
           <span class="text-gray-600 flex items-center gap-1">Valor Líquido <span class="tooltip"><i class="ph-bold ph-info"></i><span class="tooltiptext">Valor total convertido sem impostos</span></span></span>
           <span class="font-mono">${formatBRL(res.conversionBase)}</span>
@@ -1018,128 +1387,197 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
           </span>
           <span class="font-mono font-bold text-[#d6c07a]">R$ ${formatRate(res.VET)}</span>
         </div>`;
+      }
     }
 
     updateComparison(from, amount);
 
-    // 4. VERIFICAÇÃO SE É EXÓTICA
+    // 5. Botão de ação conforme a operação
     const isExotic = PAPER_RULES[from] && PAPER_RULES[from].isExotic;
 
-    if (isExotic && currentMode === "papel") {
-      // Se for exótica, exibe o aviso e troca o botão para WhatsApp
+    if (currentMode === "papel" && isExotic) {
       displayExoticWarning(from, amount, res);
+    } else if (currentMode === "venda") {
+      setActionButton({
+        label: "Solicitar Venda",
+        style: "gold",
+        onClick: openModal,
+      });
+    } else if (currentMode === "cartao" && cardOp === "recarga") {
+      insertResultNotice(
+        "Recarga direto com o especialista",
+        "A recarga do seu cartão M&A não precisa de cadastro: você será direcionado ao WhatsApp para confirmar os dados do cartão e efetuar o pagamento.",
+        "blue",
+      );
+      setActionButton({
+        label: "Solicitar Recarga no WhatsApp",
+        style: "whatsapp",
+        onClick: () => {
+          const msg = `Olá, M&A Consultoria Câmbio! 😊
+
+Gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
+
+• *Moeda:* ${formatAmount(res.amount)} ${res.currencyCode}
+• *VET (com IOF):* R$ ${formatRate(res.VET)}
+
+👉 *TOTAL ESTIMADO: ${formatBRL(res.totalBRL)}*
+
+Pode me ajudar a confirmar os dados do cartão e finalizar o pagamento?`;
+          sendToWhatsAppAndReset(msg);
+        },
+      });
     } else {
-      // FLUXO NORMAL (Moedas Comuns)
-      const isOpen = isMarketOpen();
-      const btnSolicitar = document.getElementById("buyBtn");
-
-      // Se o botão estava como WhatsApp (de uma simulação anterior), restaura
-      if (btnSolicitar.innerText.includes("WhatsApp")) {
-        restoreBuyBtn();
-      }
-
-      const currentBtn = getEl("buyBtn");
-      const newBtn = currentBtn.cloneNode(!0);
-      currentBtn.parentNode.replaceChild(newBtn, currentBtn);
-
-      // Remove aviso de fechado se existir
-      const existingWarning = document.getElementById("closedWarning");
-      if (existingWarning) existingWarning.remove();
-
-      if (!isOpen) {
-        newBtn.className =
-          "group mt-4 w-full h-14 px-4 rounded-xl bg-gray-400 cursor-not-allowed text-white font-bold text-lg shadow-none flex items-center justify-center gap-2";
-        newBtn.innerHTML = `<i class="ph-bold ph-clock-afternoon"></i> Atendimento Encerrado`;
-        newBtn.onclick = (e) => {
-          e.preventDefault();
-          alert(
-            "Para solicitar e finalizar a compra da moeda, nosso atendimento funciona de Segunda a Sexta, das 09h30 às 18h00. Fora desse horário (período noturno), finais de semana e feriados, o sistema de solicitação permanece fechado.",
-          );
-        };
-        const warningBox = document.createElement("div");
-        warningBox.id = "closedWarning";
-        warningBox.className =
-          "mt-3 text-center text-xs text-red-500 font-medium bg-red-50 p-2 rounded border border-red-100 animate-pulse";
-        warningBox.innerHTML =
-          "O mercado está fechado. Simulações liberadas, solicitações apenas em horário comercial.";
-        newBtn.parentNode.appendChild(warningBox);
-      } else {
-        newBtn.className =
-          "group mt-4 w-full h-14 px-4 rounded-xl bg-gold hover:bg-gold-hover text-gray-700 font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex items-center justify-center gap-2";
-        newBtn.innerHTML = `Solicitar Câmbio <i class="ph-bold ph-arrow-right text-xl transition-transform group-hover:translate-x-1.5"></i>`;
-        newBtn.onclick = (e) => {
-          e.preventDefault();
-          openModal();
-        };
-      }
-      window.buyBtn = newBtn;
+      setActionButton({
+        label:
+          currentMode === "cartao" ? "Solicitar Cartão" : "Solicitar Câmbio",
+        style: "gold",
+        onClick: openModal,
+      });
     }
+  }
+
+  function buildComparisonCard({
+    title,
+    icon,
+    isCurrent,
+    bigLabel,
+    res,
+    rows,
+    onClick,
+    unavailableText,
+  }) {
+    const borderClass = isCurrent
+      ? "border-[#d6c07a] bg-[#fffdf5] ring-1 ring-[#d6c07a]/20 shadow-md"
+      : "border-gray-200 bg-white hover:border-gray-300";
+    const div = document.createElement("div");
+    div.className = `p-5 rounded-xl border transition-all ${isCurrent ? "" : "cursor-pointer"} flex flex-col justify-between ${borderClass}`;
+    const selectedTag = isCurrent
+      ? '<span class="text-[10px] font-bold text-[#d6c07a] bg-[#d6c07a]/10 px-2 py-1 rounded uppercase tracking-wider">Selecionado</span>'
+      : "";
+
+    if (res) {
+      div.innerHTML = `
+        <div class="flex justify-between items-start mb-4"><div class="font-bold text-gray-800 flex items-center gap-2">${icon} ${title}</div>${selectedTag}</div>
+        <div class="text-[11px] uppercase tracking-wide text-gray-400 font-semibold">${bigLabel}</div>
+        <div class="text-3xl font-extrabold text-gray-800 mb-6 tracking-tight">${res.totalText}</div>
+        <div class="space-y-2 text-xs text-gray-500 border-t border-gray-100 pt-4">
+          ${rows.map(([k, v]) => `<div class="flex justify-between items-center"><span>${k}</span><span class="font-mono text-gray-700">${v}</span></div>`).join("")}
+        </div>`;
+      if (!isCurrent && onClick) div.onclick = onClick;
+    } else {
+      div.innerHTML = `<div class="flex justify-between items-start mb-2"><div class="font-bold text-gray-500 flex items-center gap-2">${icon} ${title}</div>${selectedTag}</div><div class="text-sm text-red-400 bg-red-50 p-2 rounded">${unavailableText || "Indisponível no momento"}</div>`;
+    }
+    return div;
   }
 
   function updateComparison(currency, amount) {
     comparisonGrid.innerHTML = "";
+
+    // VENDA: compra × venda da mesma moeda
+    if (currentMode === "venda") {
+      if (comparisonHint)
+        comparisonHint.textContent =
+          "Compare o valor de compra e de venda da mesma moeda";
+
+      const buy = calculateConversion("papel", currency, amount);
+      comparisonGrid.appendChild(
+        buildComparisonCard({
+          title: "Papel Moeda — Comprar",
+          icon: `<i class="ph-bold ph-money text-xl"></i>`,
+          isCurrent: false,
+          bigLabel: "Você paga",
+          res:
+            buy && buy.VET > 0 ? { totalText: formatBRL(buy.totalBRL) } : null,
+          rows:
+            buy && buy.VET > 0
+              ? [
+                  ["Taxa VET Un.", `R$ ${formatRate(buy.VET)}`],
+                  ["Cotação Turismo", `R$ ${formatRate(buy.cotaçãoBase)}`],
+                ]
+              : [],
+          onClick: () => {
+            cardMenuOpen = false;
+            setMode("papel");
+          },
+        }),
+      );
+
+      const sellConsult = isSellConsult(currency);
+      const sell = sellConsult
+        ? null
+        : calculateConversion("venda", currency, amount);
+      comparisonGrid.appendChild(
+        buildComparisonCard({
+          title: "Papel Moeda — Vender",
+          icon: `<i class="ph-bold ph-hand-coins text-xl"></i>`,
+          isCurrent: true,
+          bigLabel: "Você recebe",
+          res:
+            sell && sell.VET > 0
+              ? { totalText: formatBRL(sell.totalBRL) }
+              : null,
+          rows:
+            sell && sell.VET > 0
+              ? [["Taxa de Venda Un.", `R$ ${formatRate(sell.VET)}`]]
+              : [],
+          unavailableText: sellConsult
+            ? "Cotação sob consulta no WhatsApp"
+            : null,
+        }),
+      );
+      return;
+    }
+
+    // COMPRA (papel) e CARTÃO: papel × cartão
+    if (comparisonHint)
+      comparisonHint.textContent =
+        "Veja a diferença de valores para cada operação e escolha a melhor opção";
+
     ["papel", "cartao"].forEach((mode) => {
       // Exóticas só existem no papel, então ignora cartao
       if (PAPER_RULES[currency]?.isExotic && mode === "cartao") return;
 
       const res = calculateConversion(mode, currency, amount);
       const isCurrent = mode === currentMode;
-      const titleText = mode === "papel" ? "Papel Moeda" : "Cartão Pré-pago";
-      const icon =
-        mode === "papel"
-          ? `<i class="ph-bold ph-money text-xl"></i>`
-          : `<i class="ph-bold ph-credit-card text-xl"></i>`;
-      const borderClass = isCurrent
-        ? "border-[#d6c07a] bg-[#fffdf5] ring-1 ring-[#d6c07a]/20 shadow-md"
-        : "border-gray-200 bg-white hover:border-gray-300";
+      let titleText = mode === "papel" ? "Papel Moeda" : "Cartão Pré-pago";
+      if (mode === "cartao" && currentMode === "cartao")
+        titleText += cardOp === "recarga" ? " — Recarga" : " — Carga";
+      const iofPct = res
+        ? (res.iofRate * 100).toFixed(2).replace(".", ",")
+        : "";
 
-      const div = document.createElement("div");
-      div.className = `p-5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${borderClass}`;
-
-      if (res && res.VET > 0) {
-        div.innerHTML = `
-          <div class="flex justify-between items-start mb-4"><div class="font-bold text-gray-800 flex items-center gap-2">${icon} ${titleText}</div>${
-            isCurrent
-              ? '<span class="text-[10px] font-bold text-[#d6c07a] bg-[#d6c07a]/10 px-2 py-1 rounded uppercase tracking-wider">Selecionado</span>'
-              : ""
-          }</div>
-          <div class="text-3xl font-extrabold text-gray-800 mb-6 tracking-tight">${formatBRL(
-            res.totalBRL,
-          )}</div>
-          <div class="space-y-2 text-xs text-gray-500 border-t border-gray-100 pt-4">
-            <div class="flex justify-between items-center"><span>Valor Líquido</span><span class="font-mono text-gray-700">${formatBRL(
-              res.conversionBase,
-            )}</span></div>
-            <div class="flex justify-between items-center"><span>Cotação Turismo</span><span class="font-mono text-gray-700">R$ ${formatRate(
-              res.cotaçãoBase,
-            )}</span></div>
-            <div class="flex justify-between items-center"><span>IOF (${(
-              res.iofRate * 100
-            )
-              .toFixed(2)
-              .replace(
-                ".",
-                ",",
-              )}%)</span><span class="font-mono text-gray-700">${formatBRL(
-              res.totalIOFValue,
-            )}</span></div>
-            <div class="flex justify-between items-center text-xs text-gray-500"><span>Taxa VET Un.</span><span class="font-mono text-gray-700">R$ ${formatRate(
-              res.VET,
-            )}</span></div>
-          </div>`;
-        div.onclick = () => {
-          if (!isCurrent) setMode(mode);
-        };
-      } else {
-        div.innerHTML = `<div class="font-bold text-gray-500 mb-2 flex items-center gap-2">${icon} ${titleText}</div><div class="text-sm text-red-400 bg-red-50 p-2 rounded">Indisponível no momento</div>`;
-      }
-      comparisonGrid.appendChild(div);
+      comparisonGrid.appendChild(
+        buildComparisonCard({
+          title: titleText,
+          icon:
+            mode === "papel"
+              ? `<i class="ph-bold ph-money text-xl"></i>`
+              : `<i class="ph-bold ph-credit-card text-xl"></i>`,
+          isCurrent,
+          bigLabel: "Você paga",
+          res:
+            res && res.VET > 0 ? { totalText: formatBRL(res.totalBRL) } : null,
+          rows:
+            res && res.VET > 0
+              ? [
+                  ["Valor Líquido", formatBRL(res.conversionBase)],
+                  ["Cotação Turismo", `R$ ${formatRate(res.cotaçãoBase)}`],
+                  [`IOF (${iofPct}%)`, formatBRL(res.totalIOFValue)],
+                  ["Taxa VET Un.", `R$ ${formatRate(res.VET)}`],
+                ]
+              : [],
+          onClick: () => {
+            cardMenuOpen = mode === "cartao";
+            setMode(mode);
+          },
+        }),
+      );
     });
   }
 
   if (convertBtn) {
     convertBtn.onclick = async () => {
-      if (!currentMode) return showError("Selecione Papel ou Cartão.");
+      if (!currentMode) return showError("Selecione o tipo de operação.");
       if (!fromSel.value || !amountInput.value)
         return showError("Preencha os campos.");
 
@@ -1167,23 +1605,53 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
     }
   }
 
+  // Frete grátis quando a operação equivale a USD 500 ou mais (qualquer moeda,
+  // papel-moeda ou cartão). A equivalência usa as taxas da mesma modalidade:
+  // quantidade × taxa da moeda  >=  500 × taxa do USD.
+  function isDeliveryFree(quote) {
+    const ratesObj = quote.mode === "papel" ? ratesPapel : ratesCartao;
+    const usdRate = Number(ratesObj.USD?.raw);
+    const currencyRate = Number(ratesObj[quote.currencyCode]?.raw);
+
+    if (usdRate > 0 && currencyRate > 0) {
+      // Comparação em centavos inteiros para evitar erro de ponto flutuante
+      const operationCents = Math.round(quote.amount * currencyRate * 100);
+      const thresholdCents = Math.round(DELIVERY_FREE_MIN_USD * usdRate * 100);
+      return operationCents >= thresholdCents;
+    }
+
+    // Fallback (taxa do USD indisponível): usa a tabela fixa antiga
+    const threshold = DELIVERY_FREE_THRESHOLDS[quote.currencyCode];
+    return !!threshold && quote.amount >= threshold;
+  }
+
+  // Delivery: venda nunca tem (cédulas vão à loja); carga de cartão só a partir
+  // do dobro do mínimo da moeda; compra de papel sempre pode.
+  function isDeliveryAllowed(quote) {
+    if (quote.mode === "venda") return false;
+    if (quote.mode === "cartao") {
+      const min = CARD_MIN[quote.currencyCode];
+      if (!min) return true;
+      return quote.amount >= min * CARD_DELIVERY_MIN_MULTIPLIER;
+    }
+    return true;
+  }
+
   function updateModalFinance() {
     if (!currentQuote) return;
+    const isSell = currentQuote.isSell;
 
-    // 1. Verifica se o usuário marcou a opção de delivery
-    const isDelivery = deliveryCheck && deliveryCheck.checked;
+    // 1. Verifica se o usuário marcou a opção de delivery (nunca na venda)
+    const isDelivery =
+      !isSell &&
+      isDeliveryAllowed(currentQuote) &&
+      deliveryCheck &&
+      deliveryCheck.checked;
     let deliveryFee = 0;
 
-    // 2. Aplica a regra da tabela
+    // 2. Aplica a regra: frete grátis para operações equivalentes a USD 500 ou mais
     if (isDelivery) {
-      const threshold = DELIVERY_FREE_THRESHOLDS[currentQuote.currencyCode];
-
-      // Se a moeda está na tabela e o valor pedido atingiu a meta, frete grátis. Senão, 30 reais.
-      if (threshold && currentQuote.amount >= threshold) {
-        deliveryFee = 0;
-      } else {
-        deliveryFee = 30;
-      }
+      deliveryFee = isDeliveryFree(currentQuote) ? 0 : DELIVERY_FEE_BRL;
     }
 
     // 3. Salva os dados atualizados no objeto para usarmos no WhatsApp
@@ -1191,6 +1659,10 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
     currentQuote.finalTotalBRL = currentQuote.totalBRL + deliveryFee;
 
     // 4. Atualiza o Valor Total GIGANTE no Modal
+    if (modalTotalLabel)
+      modalTotalLabel.textContent = isSell
+        ? "Total a receber (BRL)"
+        : "Total a pagar (BRL)";
     if (modalTotalBRL) {
       modalTotalBRL.textContent = formatBRL(currentQuote.finalTotalBRL);
     }
@@ -1202,7 +1674,7 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
       deliveryHtml = `
         <div class="flex justify-between text-gray-500">
           <span>Frete Delivery:</span>
-          <span class="font-mono ${isFree ? "text-green-600 font-bold" : ""}">${isFree ? "R$ 0,00 (Grátis)" : "R$ 30,00"}</span>
+          <span class="font-mono ${isFree ? "text-green-600 font-bold" : ""}">${isFree ? "R$ 0,00 (Grátis)" : formatBRL(deliveryFee)}</span>
         </div>`;
     }
 
@@ -1214,18 +1686,26 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
           .getElementById("ratesContainer")
           ?.classList.contains("hidden") ?? true;
 
-      modalDetails.innerHTML = `
-        <button type="button" id="toggleRatesBtn" class="text-[10px] uppercase font-bold text-gray-400 hover:text-[#d6c07a] flex items-center justify-end gap-1 w-full transition-colors focus:outline-none">
-          ${isHidden ? 'Ver taxas <i class="ph-bold ph-caret-down"></i>' : 'Ocultar taxas <i class="ph-bold ph-caret-up"></i>'}
-        </button>
-        <div id="ratesContainer" class="${isHidden ? "hidden" : ""} mt-2 pt-2 border-t border-[#d6c07a]/10 text-xs space-y-1">
-          <div class="flex justify-between text-gray-500"><span>Valor Líquido:</span><span class="font-mono">${formatBRL(currentQuote.conversionBase)}</span></div>
+      const rowsHtml = isSell
+        ? `<div class="flex justify-between text-gray-500"><span>Quantidade:</span><span class="font-mono">${formatAmount(currentQuote.amount)} ${currentQuote.currencyCode}</span></div>
+          <div class="flex justify-between text-gray-800 font-semibold mt-1 pt-1 border-t border-dashed border-gray-200">
+            <span class="flex items-center gap-1">Taxa de Venda:</span>
+            <span class="font-mono text-[#d6c07a]">R$ ${formatRate(currentQuote.VET)}</span>
+          </div>`
+        : `<div class="flex justify-between text-gray-500"><span>Valor Líquido:</span><span class="font-mono">${formatBRL(currentQuote.conversionBase)}</span></div>
           <div class="flex justify-between text-gray-500"><span>IOF (${iofPct}%):</span><span class="font-mono">${formatBRL(currentQuote.totalIOFValue)}</span></div>
           ${deliveryHtml}
           <div class="flex justify-between text-gray-800 font-semibold mt-1 pt-1 border-t border-dashed border-gray-200">
             <span class="flex items-center gap-1">VET Final:</span>
             <span class="font-mono text-[#d6c07a]">R$ ${formatRate(currentQuote.VET)}</span>
-          </div>
+          </div>`;
+
+      modalDetails.innerHTML = `
+        <button type="button" id="toggleRatesBtn" class="text-[10px] uppercase font-bold text-gray-400 hover:text-[#d6c07a] flex items-center justify-end gap-1 w-full transition-colors focus:outline-none">
+          ${isHidden ? 'Ver taxas <i class="ph-bold ph-caret-down"></i>' : 'Ocultar taxas <i class="ph-bold ph-caret-up"></i>'}
+        </button>
+        <div id="ratesContainer" class="${isHidden ? "hidden" : ""} mt-2 pt-2 border-t border-[#d6c07a]/10 text-xs space-y-1">
+          ${rowsHtml}
         </div>`;
 
       // Religa o botão do clique nas taxas
@@ -1242,46 +1722,164 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
     }
   }
 
+  // --- FORMA DE RECEBIMENTO (VENDA) ---
+  const receiveRadios = document.querySelectorAll(
+    'input[name="receiveMethod"]',
+  );
+  const PIX_INPUTS = ["pixKey"];
+  const TED_INPUTS = ["bankName", "bankAgency", "bankAccount"];
+
+  function getReceiveMethod() {
+    const checked = document.querySelector(
+      'input[name="receiveMethod"]:checked',
+    );
+    return checked ? checked.value : "";
+  }
+
+  function updateReceiveFields() {
+    const method = getReceiveMethod();
+    const isSell = currentQuote?.isSell;
+    if (pixFields) pixFields.classList.toggle("hidden", method !== "pix");
+    if (tedFields) tedFields.classList.toggle("hidden", method !== "ted");
+    PIX_INPUTS.forEach((id) => {
+      if (getEl(id)) getEl(id).required = !!isSell && method === "pix";
+    });
+    TED_INPUTS.forEach((id) => {
+      if (getEl(id)) getEl(id).required = !!isSell && method === "ted";
+    });
+  }
+  receiveRadios.forEach((r) =>
+    r.addEventListener("change", updateReceiveFields),
+  );
+
+  // Texto da forma de recebimento para e-mail e WhatsApp
+  function getReceiveInfo() {
+    const method = getReceiveMethod();
+    if (method === "pix") {
+      return {
+        method: "PIX",
+        details: `Chave PIX (${getEl("pixKeyType").value}): ${getEl("pixKey").value}`,
+      };
+    }
+    if (method === "ted") {
+      return {
+        method: "TED",
+        details: `Banco ${getEl("bankName").value} · Ag. ${getEl("bankAgency").value} · Conta ${getEl("bankAccount").value} (${getEl("bankAccountType").value})`,
+      };
+    }
+    return { method: "Espécie", details: "Em espécie na loja" };
+  }
+
+  const OPERATIONAL_INFO = {
+    papel: [
+      "O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen e representa o custo final, incluindo câmbio, impostos (IOF) e tarifas. O cálculo real da operação é a soma do Valor Líquido + Impostos.",
+      "A operação está sujeita a disponibilidade de estoque e validação de dados/documento de identificação (é obrigatório o envio de documento válido como RG, RNE ou CNH).",
+      "Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.",
+      "Câmbio Delivery: Grátis para operações a partir de USD 500,00 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30,00 (consulte a cobertura do seu CEP e a disponibilidade diretamente com um especialista). Sem delivery, a retirada é feita na loja mais próxima do seu CEP.",
+    ],
+    cartao: [
+      "O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen e representa o custo final, incluindo câmbio, impostos (IOF) e tarifas. O cálculo real da operação é a soma do Valor Líquido + Impostos.",
+      "Pela plataforma é solicitada apenas a carga de cartão novo, respeitando o valor mínimo de cada moeda. Recarga de cartão M&A é feita pelo menu Recarga, e descarga diretamente com um especialista.",
+      "A operação está sujeita a validação de dados/documento de identificação (é obrigatório o envio de documento válido como RG, RNE ou CNH).",
+      "Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.",
+      "Câmbio Delivery: disponível para cargas a partir do dobro do valor mínimo da moeda. Grátis a partir de USD 500,00 (ou equivalente em outra moeda); abaixo disso, taxa de R$ 30,00. Para cargas menores, a retirada é feita na loja mais próxima do seu CEP.",
+    ],
+    venda: [
+      "O valor a receber é a quantidade de moeda multiplicada pela taxa de venda, que já considera o IOF.",
+      "As taxas são válidas para cédulas de série atual. Cédulas de séries antigas somente com o especialista pelo WhatsApp. Não compramos cédulas rabiscadas, manchadas ou rasgadas, nem moedas metálicas.",
+      "Você leva as cédulas até a loja M&A mais próxima do seu CEP (não realizamos coleta). O pagamento é feito após a conferência das cédulas: via PIX ou TED para conta de mesma titularidade do CPF informado, ou em espécie na loja.",
+      "É obrigatório o envio de documento de identificação válido (RG, RNE ou CNH).",
+      "Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.",
+    ],
+  };
+
+  // Ajusta o formulário conforme a operação (compra, carga de cartão ou venda)
+  function applyModalLayout() {
+    const q = currentQuote;
+    const isSell = q.isSell;
+
+    // Delivery
+    if (deliveryBlock) deliveryBlock.classList.toggle("hidden", isSell);
+    const allowed = isDeliveryAllowed(q);
+    if (deliveryCheck) deliveryCheck.disabled = !allowed;
+    if (deliveryToggle) {
+      deliveryToggle.classList.toggle("opacity-40", !allowed);
+      deliveryToggle.classList.toggle("cursor-not-allowed", !allowed);
+      deliveryToggle.classList.toggle("cursor-pointer", allowed);
+    }
+    if (deliveryRestriction) {
+      if (!allowed && !isSell && q.mode === "cartao") {
+        const min = CARD_MIN[q.currencyCode];
+        deliveryRestriction.innerHTML = `<i class="ph-bold ph-info"></i> O delivery está disponível para cargas a partir de <strong>${q.currencyCode} ${formatAmount(min * CARD_DELIVERY_MIN_MULTIPLIER)}</strong> (o dobro do mínimo). Para este valor, a retirada é feita na <strong>loja M&A mais próxima do seu CEP</strong>.`;
+        deliveryRestriction.classList.remove("hidden");
+      } else {
+        deliveryRestriction.classList.add("hidden");
+      }
+    }
+
+    // Venda: loja + forma de recebimento
+    if (storeBlock) storeBlock.classList.toggle("hidden", !isSell);
+    if (paymentBlock) paymentBlock.classList.toggle("hidden", !isSell);
+    receiveRadios.forEach((r) => {
+      r.checked = false;
+      r.required = isSell;
+    });
+    updateReceiveFields();
+
+    // Textos
+    if (successNextStep)
+      successNextStep.textContent = isSell
+        ? "Para combinar a entrega das cédulas na loja e o seu recebimento, fale agora com um de nossos especialistas!"
+        : "Para efetuar o pagamento de sua operação com segurança e combinar a entrega ou retirada, fale agora com um de nossos especialistas!";
+
+    if (operationalInfo) {
+      const items = OPERATIONAL_INFO[q.mode] || OPERATIONAL_INFO.papel;
+      operationalInfo.innerHTML = `<div class="bg-gray-100 p-4 rounded-xl border border-gray-200 text-xs text-gray-600 space-y-2 text-justify">
+      <p class="font-bold text-gray-700 mb-1 flex items-center gap-1"><i class="ph-bold ph-info"></i> Informações Importantes:</p>
+      ${items.map((t, i) => `<p>${i + 1}. ${t}</p>`).join("")}
+    </div>`;
+    }
+  }
+
+  function getSubmitLabel() {
+    if (currentQuote?.isSell)
+      return `Confirmar Venda <i class="ph-bold ph-check-circle text-xl"></i>`;
+    if (currentQuote?.mode === "cartao")
+      return `Confirmar Pedido do Cartão <i class="ph-bold ph-check-circle text-xl"></i>`;
+    return `Confirmar Compra <i class="ph-bold ph-check-circle text-xl"></i>`;
+  }
+
   function openModal() {
     if (!currentQuote) return showError("Faça uma cotação antes.");
 
     // 1. Preenche a quantidade e a moeda lá no topo do modal
-    modalCurrencyAmount.textContent = currentQuote.amount.toLocaleString(
-      "pt-BR",
-      { minimumFractionDigits: 2 },
-    );
+    modalCurrencyAmount.textContent = formatAmount(currentQuote.amount);
     modalCurrencyCode.textContent = currentQuote.currencyCode;
 
     // 2. Zera o estado do delivery para não puxar lixo da cotação anterior
-    if (typeof deliveryCheck !== "undefined" && deliveryCheck) {
+    if (deliveryCheck) {
       deliveryCheck.checked = false;
-
-      if (typeof deliveryFields !== "undefined" && deliveryFields) {
-        deliveryFields.classList.add("hidden");
-      }
-
+      if (deliveryFields) deliveryFields.classList.add("hidden");
       const cepInput = document.getElementById("deliveryCEP");
       const addressInput = document.getElementById("deliveryAddress");
-
       if (cepInput) cepInput.required = false;
       if (addressInput) addressInput.required = false;
     }
 
-    // 3. A MÁGICA ACONTECE AQUI: Calcula o frete, escreve o Total na tela e monta o sanfona de taxas
+    // 3. Layout conforme a operação + valores (frete, total, taxas)
+    applyModalLayout();
     updateModalFinance();
 
-    // 4. Mantém a sua caixa de Informações Importantes intacta!
-    if (operationalInfo) {
-      operationalInfo.innerHTML = `<div class="bg-gray-100 p-4 rounded-xl border border-gray-200 text-xs text-gray-600 space-y-2 text-justify">
-      <p class="font-bold text-gray-700 mb-1 flex items-center gap-1"><i class="ph-bold ph-info"></i> Informações Importantes:</p>
-      <p>1. O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen e representa o custo final, incluindo câmbio, impostos (IOF) e tarifas. O cálculo real da operação é a soma do Valor Líquido + Impostos.</p>
-      <p>2. A operação está sujeita a disponibilidade de estoque e validação de dados/documento de identificação (é obrigatório o envio de documento válido como RG, RNE ou CNH).</p>
-      <p>3. Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.</p>
-      <p>4. Câmbio Delivery: Grátis para operações acima de USD 500,00 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30,00 (consulte a cobertura do seu CEP e a disponibilidade diretamente com um especialista).</p>
-    </div>`;
+    // Nova solicitação: zera o controle de e-mails e qualquer aviso de falha anterior
+    emailStatus = { admin: false, client: false };
+    hideSubmitError();
+    const submitBtn = budgetForm?.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.innerHTML = getSubmitLabel();
+      submitBtn.disabled = !1;
     }
 
-    // 5. Exibe as telas corretas do modal
+    // 4. Exibe as telas corretas do modal
     if (budgetForm) budgetForm.classList.remove("hidden");
     if (successStep) successStep.classList.add("hidden");
     if (budgetModal) budgetModal.classList.remove("hidden");
@@ -1302,6 +1900,17 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
     if (e.target == budgetModal) closeModal();
   });
 
+  function getDeliveryText() {
+    const q = currentQuote;
+    if (q.isSell) return "Não se aplica (cliente leva as cédulas à loja)";
+    const isDeliveryChecked =
+      isDeliveryAllowed(q) && deliveryCheck && deliveryCheck.checked;
+    if (!isDeliveryChecked) return "Não (Retirada na Loja)";
+    return q.deliveryFee === 0
+      ? "Sim (Frete Grátis)"
+      : `Sim (Frete ${formatBRL(q.deliveryFee)})`;
+  }
+
   if (budgetForm) {
     budgetForm.onsubmit = async (e) => {
       e.preventDefault();
@@ -1318,34 +1927,29 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
       btn.disabled = !0;
 
       try {
-        const isDeliveryChecked = deliveryCheck && deliveryCheck.checked;
-        let deliveryFeeText = "Não (Retirada na Loja)";
-        if (isDeliveryChecked) {
-          deliveryFeeText =
-            currentQuote.deliveryFee === 0
-              ? "Sim (Frete Grátis)"
-              : "Sim (Frete R$ 30,00)";
-        }
+        const q = currentQuote;
+        const isDeliveryChecked =
+          !q.isSell &&
+          isDeliveryAllowed(q) &&
+          deliveryCheck &&
+          deliveryCheck.checked;
 
         let templateParams = {
-          currency_amount: currentQuote.amount.toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-          }),
-          currency_code: currentQuote.currencyCode,
+          currency_amount: formatAmount(q.amount),
+          currency_code: q.currencyCode,
           quote_date: new Date().toLocaleString("pt-BR", {
             timeZone: "America/Sao_Paulo",
           }),
-          exchange_rate: formatRate(currentQuote.cotaçãoBase),
-          iof_value: formatBRL(currentQuote.totalIOFValue),
-          vet_rate: formatRate(currentQuote.VET),
-          total_brl: formatBRL(
-            currentQuote.finalTotalBRL || currentQuote.totalBRL,
-          ),
-          operation_type:
-            currentQuote.mode === "papel" ? "Papel Moeda" : "Cartão Pré-pago",
+          exchange_rate: formatRate(q.cotaçãoBase),
+          iof_value: q.isSell ? "Incluso na taxa" : formatBRL(q.totalIOFValue),
+          vet_rate: formatRate(q.VET),
+          total_brl: formatBRL(q.finalTotalBRL || q.totalBRL),
+          operation_type: getOperationLabel(q),
           client_name: name,
           client_email: email,
           client_phone: phone,
+          // Só dígitos, para o link wa.me/55{{client_phone_digits}} funcionar no e-mail
+          client_phone_digits: phone.replace(/\D/g, ""),
           client_cpf: getEl("clientCPF").value,
           client_rg: getEl("clientRG").value,
           client_birth: getEl("clientBirth").value,
@@ -1354,7 +1958,7 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
           client_job: getEl("clientJob").value,
           client_cep: getEl("clientCEP").value,
           client_address: getEl("clientAddress").value,
-          delivery_needed: deliveryFeeText,
+          delivery_needed: getDeliveryText(),
           delivery_address: isDeliveryChecked
             ? getEl("deliveryAddress").value
             : "—",
@@ -1365,17 +1969,60 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
             "Cliente instruído a enviar documentação via WhatsApp ou E-mail.",
         };
 
-        const sendAdmin = emailjs.send(
-          SERVICE_ID,
-          TEMPLATE_ADMIN,
-          templateParams,
-        );
-        const sendClient = emailjs.send(SERVICE_ID, TEMPLATE_CLIENTE, {
-          ...templateParams,
-          to_email: email,
-        });
+        // Flags para os blocos condicionais do template. Usar "" (e não false),
+        // porque o EmailJS trata qualquer texto não vazio como verdadeiro.
+        templateParams.is_sell = q.isSell ? "sim" : "";
+        templateParams.total_label = q.isSell
+          ? "Valor a Receber Total"
+          : "Total a Pagar";
 
-        await Promise.all([sendAdmin, sendClient]);
+        // Venda: dados de recebimento
+        if (q.isSell) {
+          const info = getReceiveInfo();
+          templateParams = {
+            ...templateParams,
+            receive_method: info.method,
+            receive_details: info.details,
+            pix_key_type:
+              info.method === "PIX" ? getEl("pixKeyType").value : "—",
+            pix_key: info.method === "PIX" ? getEl("pixKey").value : "—",
+            bank_name: info.method === "TED" ? getEl("bankName").value : "—",
+            bank_agency:
+              info.method === "TED" ? getEl("bankAgency").value : "—",
+            bank_account:
+              info.method === "TED" ? getEl("bankAccount").value : "—",
+            bank_account_type:
+              info.method === "TED" ? getEl("bankAccountType").value : "—",
+            store_note:
+              "Cliente levará as cédulas à loja M&A mais próxima do CEP informado.",
+          };
+        }
+
+        const templateAdmin = TEMPLATE_ADMIN;
+        const templateCliente = TEMPLATE_CLIENTE;
+
+        if (typeof emailjs === "undefined") {
+          throw new Error("EmailJS não carregou");
+        }
+
+        // 1º e-mail: M&A (o mais importante). Se já foi numa tentativa
+        // anterior, não reenvia — evita solicitação duplicada.
+        if (!emailStatus.admin) {
+          await sendEmailWithTimeout(templateAdmin, templateParams);
+          emailStatus.admin = true;
+        }
+
+        // 2º e-mail: cópia para o cliente
+        if (!emailStatus.client) {
+          await sendEmailWithTimeout(templateCliente, {
+            ...templateParams,
+            to_email: email,
+          });
+          emailStatus.client = true;
+        }
+
+        // Só chega aqui se os DOIS e-mails foram aceitos pelo EmailJS
+        hideSubmitError();
 
         if (typeof gtag === "function") {
           gtag("event", "conversion", {
@@ -1387,57 +2034,108 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
         successStep.classList.remove("hidden");
         setupFinalWhats(name);
       } catch (error) {
-        console.error("❌ Erro envio", error);
-        budgetForm.classList.add("hidden");
-        successStep.classList.remove("hidden");
-        setupFinalWhats(name);
-      } finally {
-        btn.innerHTML = originalContent;
+        // Falhou: NÃO mostra "Confirmada!". O cliente fica no formulário,
+        // com os dados preenchidos, e pode tentar de novo ou ir ao WhatsApp.
+        console.error("❌ Erro envio", error, emailStatus);
+        showSubmitError(name);
+        btn.innerHTML = `<i class="ph-bold ph-arrow-clockwise text-xl"></i> Tentar novamente`;
         btn.disabled = !1;
+        return;
+      } finally {
+        // Restaura o botão só quando deu certo (no erro ele vira "Tentar novamente")
+        if (emailStatus.admin && emailStatus.client) {
+          btn.innerHTML = originalContent;
+          btn.disabled = !1;
+        }
       }
     };
+  }
+
+  // Envia um e-mail pelo EmailJS com limite de tempo (se travar, conta como falha)
+  function sendEmailWithTimeout(templateId, params) {
+    return Promise.race([
+      emailjs.send(SERVICE_ID, templateId, params),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Tempo esgotado no envio do e-mail")),
+          EMAIL_TIMEOUT_MS,
+        ),
+      ),
+    ]);
+  }
+
+  // Mensagem do WhatsApp após o formulário (ou quando o envio falhou)
+  function buildFinalMessage(name, sendFailed) {
+    const q = currentQuote;
+    const cpf = getEl("clientCPF").value;
+    const clientCep = getEl("clientCEP").value;
+    const total = formatBRL(q.finalTotalBRL || q.totalBRL);
+    const intro = sendFailed
+      ? "Tentei enviar meus dados pelo *Site Conversor*, mas o envio falhou. Gostaria de prosseguir com a seguinte operação:"
+      : "Acabei de enviar meus dados pelo *Site Conversor* e gostaria de prosseguir com a seguinte operação:";
+    const docLine =
+      "📎 Estou enviando em anexo a foto do meu documento (CNH, RG ou RNE) para concluir meu cadastro.";
+
+    let lines;
+    if (q.isSell) {
+      const info = getReceiveInfo();
+      lines = [
+        `• *Operação:* Papel Moeda — Venda 💵`,
+        `• *Moeda:* ${formatAmount(q.amount)} ${q.currencyCode}`,
+        `• *Taxa de venda (com IOF):* R$ ${formatRate(q.VET)}`,
+        `• *Recebimento:* ${info.method === "Espécie" ? info.details : `${info.method} — ${info.details}`}`,
+        `• *Entrega das cédulas:* na loja mais próxima do meu CEP *${clientCep}*`,
+        ``,
+        `👉 *VALOR A RECEBER: ${total}*`,
+      ];
+    } else {
+      const isDeliveryChecked =
+        isDeliveryAllowed(q) && deliveryCheck && deliveryCheck.checked;
+      const deliveryLine = isDeliveryChecked
+        ? `• *Entrega:* Delivery no CEP *${getEl("deliveryCEP").value}* (${q.deliveryFee === 0 ? "frete grátis" : `frete ${formatBRL(q.deliveryFee)}`})`
+        : `• *Entrega:* Retirada na loja mais próxima do meu CEP *${clientCep}*`;
+      lines = [
+        `• *Operação:* ${getOperationLabel(q)} ${q.mode === "cartao" ? "💳" : "💵"}`,
+        `• *Moeda:* ${formatAmount(q.amount)} ${q.currencyCode}`,
+        `• *VET Final (com IOF):* R$ ${formatRate(q.VET)}`,
+        deliveryLine,
+        ``,
+        `👉 *TOTAL A PAGAR: ${total}*`,
+      ];
+    }
+
+    return `Olá, M&A Consultoria Câmbio! 😊\n\nMeu nome é *${name}* (CPF *${cpf}*).\n\n${intro}\n\n${lines.join("\n")}\n\n${docLine}`;
+  }
+
+  function showSubmitError(name) {
+    hideSubmitError();
+    const submitBtn = budgetForm.querySelector('button[type="submit"]');
+    const box = document.createElement("div");
+    box.id = "submitError";
+    box.setAttribute("role", "alert");
+    box.className =
+      "mt-6 p-4 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700 fade-in";
+    box.innerHTML = `
+      <p class="font-bold flex items-center gap-2 mb-1"><i class="ph-bold ph-warning-circle text-lg"></i> Não conseguimos enviar sua solicitação</p>
+      <p class="text-xs text-red-600 leading-relaxed mb-3">Houve uma falha de conexão no envio. Seus dados continuam preenchidos: clique em <strong>"Tentar novamente"</strong> abaixo. Se o problema continuar, fale direto com um especialista pelo WhatsApp.</p>
+      <button type="button" id="submitErrorWhats" class="w-full h-11 px-4 rounded-lg bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors"><i class="ph-bold ph-whatsapp-logo text-lg"></i> Falar com Especialista no WhatsApp</button>`;
+    submitBtn.parentNode.insertBefore(box, submitBtn);
+
+    getEl("submitErrorWhats").onclick = () => {
+      openWhatsApp(pickOperator(), buildFinalMessage(name, true));
+    };
+  }
+
+  function hideSubmitError() {
+    const box = getEl("submitError");
+    if (box) box.remove();
   }
 
   function setupFinalWhats(name) {
     if (!finalWhatsAppBtn || !currentQuote) return;
 
     finalWhatsAppBtn.onclick = () => {
-      const phoneDigits = getEl("clientPhone").value.replace(/\D/g, "");
-      let randomIndex =
-        phoneDigits.length > 0
-          ? parseInt(phoneDigits.charAt(phoneDigits.length - 1), 10) % 2
-          : Date.now() % 2;
-
-      const modeText =
-        currentQuote.mode === "papel" ? "Papel Moeda 💵" : "Cartão 💳";
-      const client_cpf = getEl("clientCPF").value;
-
-      // 1. Puxa os dados formatados (garantindo que pega o Total com Frete)
-      const finalTotal = currentQuote.finalTotalBRL || currentQuote.totalBRL;
-      const totalBRL = formatBRL(finalTotal);
-      const vetRate = formatRate(currentQuote.VET);
-      const cotacaoTurismo = formatRate(currentQuote.cotaçãoBase);
-
-      // 2. Prepara a linha do Frete para a mensagem
-      const isDeliveryChecked = deliveryCheck && deliveryCheck.checked;
-      let deliveryText = "";
-      if (isDeliveryChecked && currentQuote.deliveryFee > 0) {
-        deliveryText = `\n• *Frete Delivery:* R$ 30,00`;
-      }
-
-      // 3. Monta a mensagem final
-      // const msg = `Olá, M&A Consultoria Câmbio! 😊\n\nMeu nome é *${name}* (CPF *${client_cpf}*).\n\nAcabei de enviar meus dados pelo *Site Conversor* e gostaria de prosseguir com a seguinte operação:\n\n• *Modalidade:* ${modeText}\n• *Moeda:* ${currentQuote.amount} ${currentQuote.currencyCode}\n• *VET Final (com IOF):* R$ ${vetRate}${deliveryText}\n\n👉 *TOTAL A PAGAR: ${totalBRL}*\n\n📎 Estou enviando em anexo a foto do meu documento (CNH, RG ou RNE) para concluir meu cadastro.`;
-
-      // window.open(
-      //   `https://api.whatsapp.com/send?phone=${OPERATORS[randomIndex]}&text=${encodeURIComponent(msg)}`,
-      //   "_blank",
-      // );
-      const msg = `Olá, M&A Consultoria Câmbio! 😊\n\nMeu nome é *${name}* (CPF *${client_cpf}*).\n\nAcabei de enviar meus dados pelo *Site Conversor* e gostaria de prosseguir com a seguinte operação:\n\n• *Modalidade:* ${modeText}\n• *Moeda:* ${currentQuote.amount} ${currentQuote.currencyCode}\n• *VET Final (com IOF):* R$ ${vetRate}${deliveryText}\n\n👉 *TOTAL A PAGAR: ${totalBRL}*\n\n📎 Estou enviando em anexo a foto do meu documento (CNH, RG ou RNE) para concluir meu cadastro.`;
-
-      window.open(
-        `https://api.whatsapp.com/send?phone=${OPERATORS[randomIndex]}&text=${formatarMsgWhatsApp(msg)}`,
-        "_blank",
-      );
+      openWhatsApp(pickOperator(), buildFinalMessage(name, false));
       setTimeout(() => window.location.reload(), 1000);
     };
   }

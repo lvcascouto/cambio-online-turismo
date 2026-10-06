@@ -30,6 +30,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Manrope:wght@200..800&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script> tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'Raleway', 'sans-serif'], }, colors: { gold: '#d6c07a', 'gold-hover': '#b5a060', } } } } </script>
   <script src="https://unpkg.com/@phosphor-icons/web" defer></script>
@@ -42,20 +45,23 @@
 
     gtag('config', 'AW-738500529');
   </script>
-  <link rel="stylesheet" href="dist/style.min.css">
+  <link rel="stylesheet" href="dist/style.min.css"> <!-- Produção -->
+  <!-- <link rel="stylesheet" href="src/css/style.css"> Desenvolvimento -->
 </head>
 
 <body class="bg-gray-50 min-h-screen antialiased flex flex-col">
-  <header class="hero pt-24 pb-12 md:py-16 relative"><a href="https://www.maconsultoriacambio.com.br/" 
-   class="absolute top-4 right-4 md:top-6 md:right-10 text-xs sm:text-sm font-medium text-gray-500 hover:text-gold transition-all flex items-center gap-1.5 z-50 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 hover:border-gold/30 hover:bg-white/20 shadow-sm">
-   Voltar para o site 🡦
-</a> 
-    <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
+  <header class="hero pt-24 pb-12 md:py-16 relative">
+    <a href="https://www.maconsultoriacambio.com.br/" 
+      class="absolute top-4 right-4 md:top-6 md:right-10 text-xs sm:text-sm font-medium text-gray-500 hover:text-gold transition-all flex items-center gap-1.5 z-50 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10 hover:border-gold/30 hover:bg-white/20 shadow-sm">
+      Voltar para o site
+      <i class="ph ph-arrow-up-right text-base"></i>
+    </a> 
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
       <div class="flex-1 flex flex-col md:flex-row items-center gap-4 md:gap-5 w-full">
         <div class="logo-badge shadow-lg shrink-0"><img src="./assets/img/logo-MA.png" alt="Logo M&A Consultoria Câmbio" class="w-18 h-18 object-contain"></div>
-        <div class="flex flex-col items-center md:items-start"><span class="text-base md:text-lg font-semibold text-gold">M&A Consultoria Câmbio</span>
-          <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-white flex items-center gap-2 mt-1 md:mt-0 justify-center md:justify-start"> CONVERSOR DE MOEDAS </h1>
-          <p class="text-xs text-gray-300 mt-2 md:mt-1 tracking-wide max-w-md md:max-w-none mx-auto md:mx-0"> Garanta com facilidade e em tempo real as melhores taxas para sua viagem ou negócios </p>
+        <div class="flex flex-col items-center md:items-start"><span class="font-['Raleway'] text-base md:text-lg font-semibold text-gold">M&A Consultoria Câmbio</span>
+          <h1 class="font-['Raleway'] text-2xl sm:text-3xl md:text-4xl font-extrabold text-white flex items-center gap-2 mt-1 md:mt-0 justify-center md:justify-start"> PLATAFORMA DE CÂMBIO </h1>
+          <p class="text-xs text-gray-300 mt-2 md:mt-1 tracking-wide max-w-md md:max-w-none mx-auto md:mx-0">Garanta com facilidade e em tempo real as melhores taxas para suas operações de moedas estrangeiras </p>
         </div>
       </div>
       <div class="flex-none mt-2 md:mt-0">
@@ -63,15 +69,48 @@
       </div>
     </div>
   </header>
-  <main class="max-w-6xl mx-auto px-4 -mt-10 flex-grow w-full z-10 relative pb-12">
+  <main class="max-w-7xl mx-auto px-4 -mt-10 flex-grow w-full z-10 relative pb-12">
     <div class="grid lg:grid-cols-3 gap-6 items-start">
       <section class="lg:col-span-1 glass rounded-2xl p-6 card-hover border border-gray-100 flex flex-col">
-        <h3 class="text-xl font-bold text-gray-800 mb-2">Tipo de Operação (compra)</h3>
-        <p class="text-xs text-gray-500 mb-4">Escolha entre Papel Moeda ou Cartão Pré-pago</p>
-        <div class="flex items-center gap-3 mb-8"><button id="btnPapel" class="flex-1 px-4 py-2 rounded-lg border font-semibold text-gray-500 text-sm transition-all flex items-center justify-center gap-2 bg-white hover:bg-gray-50" aria-label="Selecionar Papel Moeda"><i class="ph-bold ph-money text-lg"></i> Papel </button><button id="btnCartao" class="flex-1 px-4 py-2 rounded-lg border font-semibold text-gray-500 text-sm transition-all flex items-center justify-center gap-2 bg-white hover:bg-gray-50" aria-label="Selecionar Cartão Pré-pago"><i class="ph-bold ph-credit-card text-lg"></i> Cartão </button></div>
+        <div class="flex items-center gap-2 mb-2">
+          <button id="opBackBtn" type="button" class="hidden w-8 h-8 -ml-1 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors" aria-label="Voltar para os tipos de operação"><i class="ph-bold ph-arrow-left text-lg"></i></button>
+          <h3 id="opTitle" class="font-['Raleway'] text-xl font-bold text-gray-800">Operação</h3>
+        </div>
+        <p id="opSubtitle" class="text-xs text-gray-500 mb-4">Selecione o tipo da sua operação entre Papel-Moeda ou Cartão Pré-pago</p>
+        <!-- Menu principal: Papel Comprar / Papel Vender / Cartão -->
+        <div id="opMain" class="grid grid-cols-3 gap-3 mb-8">
+          <button id="btnPapel" type="button" class="op-btn" aria-label="Papel-moeda: comprar">
+            <span class="op-btn-title"><i class="ph-bold ph-money-wavy text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Papel</span>
+            <span class="op-btn-sub text-green-700">Compra</span>
+          </button>
+          <button id="btnVenda" type="button" class="op-btn" aria-label="Papel-moeda: vender">
+            <span class="op-btn-title"><i class="ph-bold ph-money-wavy text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Papel</span>
+            <span class="op-btn-sub text-red-600">Venda</span>
+          </button>
+          <button id="btnCartao" type="button" class="op-btn" aria-label="Cartão pré-pago: carga, recarga ou descarga">
+            <span class="op-btn-title"> <i class="ph-bold ph-credit-card text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i>Cartão</span>
+            <!-- <span class="op-btn-sub text-blue-700">Carga / Recarga / Descarga</span> -->
+          </button>
+        </div>
+        <!-- Submenu do Cartão: Carga / Recarga / Descarga -->
+        <div id="opCard" class="hidden grid grid-cols-3 gap-3 mb-8">
+          <button id="btnCarga" type="button" class="op-btn" aria-label="Cartão: carga em cartão novo">
+            <span class="op-btn-title"><i class="ph-bold ph-credit-card text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Carga</span>
+            <span class="op-btn-sub text-green-700">Cartão Novo</span>
+          </button>
+          <button id="btnRecarga" type="button" class="op-btn" aria-label="Cartão: recarga de cartão M&A">
+            <span class="op-btn-title"><i class="ph-bold ph-arrows-clockwise text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Recarga</span>
+            <span class="op-btn-sub text-blue-700">Cartão M&A</span>
+          </button>
+          <button id="btnDescarga" type="button" class="op-btn op-btn-disabled" aria-label="Cartão: descarga (em breve)" aria-disabled="true" title="Em breve">
+            <span class="op-btn-title"><i class="ph-bold ph-tag text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Descarga</span>
+            <span class="op-btn-sub text-red-600">Cartão M&A</span>
+            <span class="op-btn-badge">Em breve</span>
+          </button>
+        </div>
         <div>
           <h4 class="font-semibold text-gray-700 mb-2 text-sm">Moedas disponíveis</h4>
-          <p class="text-xs text-gray-500 mb-4">Selecione a moeda estrangeira de sua preferência</p>
+          <p id="currencyListHint" class="text-xs text-gray-500 mb-4">Selecione a moeda estrangeira de sua preferência</p>
           <div class="max-h-[540px] overflow-y-auto custom-scroll pr-2">
             <div id="currencyList" class="grid grid-cols-2 gap-3 pb-1"></div>
           </div>
@@ -80,11 +119,11 @@
       <section class="lg:col-span-2 glass rounded-2xl p-6 card-hover border border-gray-100 flex flex-col justify-start">
         <div class="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h2 class="text-xl font-bold text-gray-800 mb-1">Simule sua Operação</h2>
-            <p class="text-xs text-gray-500">Insira a moeda desejada e a quantidade para compra nos campos abaixos</p>
+            <h2 class="font-['Raleway'] text-xl font-bold text-gray-800 mb-1">Simule sua Operação</h2>
+            <p class="text-xs text-gray-500">Insira a moeda desejada e a quantidade nos campos abaixo</p>
           </div>
         </div>
-        <div class="grid md:grid-cols-2 gap-4">
+        <div class="grid md:grid-cols-2 gap-4 mt-2">
           <div><label for="from" class="block text-xs text-gray-500 font-semibold tracking-wider mb-1">Moeda estrangeira</label>
             <div class="relative"><select id="from" class="w-full h-12 px-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent transition-all appearance-none text-gray-700 font-medium cursor-pointer">
                 <option value="" selected disabled>Selecione...</option>
@@ -98,7 +137,7 @@
           <div class="p-5 rounded-xl border border-gold/30 bg-gradient-to-br from-[#fffdf5] to-white relative overflow-hidden">
             <div class="absolute top-0 right-0 w-16 h-16 bg-gold/10 rounded-bl-full -mr-4 -mt-4"></div>
             <div class="flex flex-col gap-1 relative z-10">
-              <div class="text-xs text-gray-500 uppercase tracking-wide">Valor Total (VET)</div>
+              <div id="resultLabel" class="text-xs text-gray-500 uppercase tracking-wide">Valor Total (VET)</div>
               <div class="flex items-baseline gap-2">
                 <div class="text-4xl font-extrabold text-gray-800 tracking-tight" id="resultValue">—</div>
                 <div class="text-sm text-gray-500">BRL</div>
@@ -116,11 +155,11 @@
       </section>
     </div>
     <section class="glass rounded-2xl p-6 mt-6 card-hover border border-gray-100">
-      <h3 class="text-xl font-bold text-gray-800 mb-1">Comparativo</h3>
-      <p class="text-xs text-gray-500 mb-4">Veja a diferença de valores para cada operação e escolha a melhor opção</p>
+      <h3 class="font-['Raleway'] text-xl font-bold text-gray-800 mb-1">Comparativo</h3>
+      <p id="comparisonHint" class="text-xs text-gray-500 mb-4">Veja a diferença de valores para cada operação e escolha a melhor opção</p>
       <div id="comparisonGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
     </section>
-    <section class="max-w-6xl mx-auto mt-12 mb-0">
+    <section class="max-w-7xl mx-auto mt-12 mb-0">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-center group">
           <div class="w-12 h-12 mx-auto bg-[#fffdf5] rounded-full flex items-center justify-center text-gold mb-4 group-hover:scale-110 transition-transform"><i class="ph-bold ph-shield-check text-2xl"></i></div>
@@ -139,55 +178,80 @@
         </div>
       </div>
       <div class="max-w-3xl mx-auto">
-        <h2 class="text-2xl font-bold text-gray-800 text-center mb-8">Dúvidas Frequentes</h2>
+        <h2 class="font-['Raleway'] text-2xl font-bold text-gray-800 text-center mb-8">Dúvidas Frequentes</h2>
         <div class="space-y-4">
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="w-full flex justify-between items-center p-4 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Qual o horário de funcionamento do Conversor de Moedas?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Você pode realizar <strong>simulações de taxas 24 horas por dia</strong>, 7 dias por semana. <br> Para <strong>solicitar e finalizar a compra</strong> da moeda, nosso atendimento funciona de <strong>Segunda a Sexta, das 09h30 às 18h00</strong>. Fora desse horário (período noturno), finais de semana e feriados, o sistema de solicitação permanece fechado. </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Qual o horário de funcionamento da Plataforma de Câmbio?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Você pode realizar <strong>simulações 24 horas por dia</strong>, 7 dias por semana. <br> Para <strong>solicitar e finalizar</strong> uma operação (compra, venda, carga ou recarga de cartão), nosso atendimento funciona de <strong>Segunda a Sexta, das 09h30 às 18h00</strong>. Fora desse horário (período noturno), finais de semana e feriados, as solicitações permanecem fechadas. </div>
           </div>
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="w-full flex justify-between items-center p-4 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Como funciona o processo de cotação online?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> O processo é simples e rápido: <ol class="list-decimal list-inside mt-2 space-y-2">
-                <li><strong>Simulação:</strong> Escolha o tipo de operação para compra (Papel-Moeda ou Cartão Pré-pago), selecione a moeda desejada e a quantidade, depois clique no botão <strong>"Simular"</strong>.</li>
-                <li><strong>Solicitação:</strong> Com a simulação realizada, verifique os detalhes da operação, o comparativo entre Papel-Moeda e Cartão, confirme sua preferência e depois clique no botão <strong>"Prosseguir com a Compra"</strong>.</li>
-                <li><strong>Cadastro:</strong> Preencha as informações pedidas no formulário e clique em <strong>"Confirmar Compra"</strong>.</li>
-                <li><strong>Confirmação:</strong> Receberemos seu pedido de compra imediatamente e você receberá uma cópia com os detalhes da operação no seu e-mail.</li>
-                <li><strong>Contato:</strong> Na tela de confirmação da compra, clique no botão <strong>"Falar com Especialista"</strong> para iniciar o atendimento via WhatsApp e efetuar o pagamento.</li>
-                <li><strong>Documentação:</strong> Envie uma foto ou PDF do seu documento (RG, CNH ou RNE) pelo próprio WhatsApp ou E-mail (conversor@maconsultoriacambio.com.br) para finalizarmos seu cadastro.</li>
-                <li><strong>Pagamento e Entrega:</strong> Diretamente com o operador, você realiza o pagamento e combina a forma de retirada ou entrega.</li>
-              </ol>
-            </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Quais operações posso fazer pela plataforma?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> <ul class="list-disc list-inside mt-2 space-y-2">
+                <li><strong>Papel-moeda — Comprar:</strong> compra de moeda estrangeira em espécie.</li>
+                <li><strong>Papel-moeda — Vender:</strong> venda das suas cédulas de moeda estrangeira para a M&A.</li>
+                <li><strong>Cartão Pré-pago — Carga:</strong> compra de cartão novo com carga.</li>
+                <li><strong>Cartão Pré-pago — Recarga:</strong> recarga do seu cartão M&A, finalizada direto com um especialista no WhatsApp.</li>
+                <li><strong>Cartão Pré-pago — Descarga:</strong> em breve na plataforma. Por enquanto, fale com um especialista.</li>
+              </ul> </div>
           </div>
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="w-full flex justify-between items-center p-4 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>É seguro comprar moedas estrangeiras online?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Como funciona a compra de moeda (papel-moeda ou carga de cartão)?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> <ol class="list-decimal list-inside mt-2 space-y-2">
+                <li><strong>Simulação:</strong> Em <strong>Operação</strong>, escolha <strong>Papel — Comprar</strong> ou <strong>Cartão — Carga</strong>, selecione a moeda e a quantidade e clique em <strong>"Simular"</strong>.</li>
+                <li><strong>Solicitação:</strong> Confira os detalhes e o comparativo e clique em <strong>"Solicitar Câmbio"</strong> ou <strong>"Solicitar Cartão"</strong>.</li>
+                <li><strong>Cadastro:</strong> Preencha o formulário e confirme.</li>
+                <li><strong>Confirmação:</strong> Você recebe uma cópia com os detalhes da operação no seu e-mail.</li>
+                <li><strong>Contato:</strong> Clique em <strong>"Falar com Especialista"</strong> para seguir no WhatsApp e efetuar o pagamento.</li>
+                <li><strong>Documentação:</strong> Envie foto ou PDF do seu documento (RG, CNH ou RNE) pelo WhatsApp ou E-mail (conversor@maconsultoriacambio.com.br).</li>
+                <li><strong>Entrega:</strong> Combine com o operador o delivery ou a retirada na loja mais próxima do seu CEP.</li>
+              </ol> </div>
+          </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Como funciona a venda de moeda estrangeira?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Escolha <strong>Papel — Vender</strong>, selecione a moeda e a quantidade e clique em <strong>"Simular"</strong> para ver o valor a receber. Depois, clique em <strong>"Solicitar Venda"</strong>, preencha o cadastro e informe como deseja receber. <ul class="list-disc list-inside mt-2 space-y-2">
+                <li><strong>Moedas com taxa na plataforma:</strong> USD, EUR, JPY, GBP, CHF, AUD e CAD. Mínimo de 100 (JPY 1.000).</li>
+                <li><strong>Outras moedas</strong> (NZD, MXN, CLP, UYU, CNY, PEN, ARS, COP e ZAR): cotação sob consulta com um especialista no WhatsApp.</li>
+                <li><strong>Cédulas:</strong> aceitamos cédulas de todos os valores, inclusive as menores; não aceitamos moedas metálicas. As taxas valem para cédulas de série atual; séries antigas somente com o especialista. Não compramos cédulas rabiscadas, manchadas ou rasgadas.</li>
+                <li><strong>Entrega das cédulas:</strong> você leva as cédulas até a loja M&A mais próxima do seu CEP. Não realizamos coleta.</li>
+                <li><strong>Recebimento:</strong> via PIX ou TED para conta de mesma titularidade do CPF informado, ou em espécie na loja, após a conferência das cédulas.</li>
+              </ul> </div>
+          </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Como funciona o cartão pré-pago?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> <ul class="list-disc list-inside mt-2 space-y-2">
+                <li><strong>Carga (cartão novo):</strong> solicitada pela plataforma, com cadastro. Valores mínimos: USD 50, EUR 40, GBP 30, CAD 50, AUD 50, NZD 50, MXN 900, JPY 8.000 (apenas valores redondos) e CHF 40.</li>
+                <li><strong>Recarga (cartão M&A):</strong> mesmos valores mínimos. Não precisa de cadastro: após a simulação, você é direcionado ao WhatsApp para confirmar os dados do cartão e pagar.</li>
+                <li><strong>Descarga:</strong> em breve na plataforma. Por enquanto, fale com um especialista.</li>
+              </ul> </div>
+          </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Vocês fazem entrega (Delivery) ou posso retirar?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Depende da operação: <ul class="list-disc list-inside mt-2 space-y-2">
+                <li><strong>Compra de papel-moeda:</strong> delivery grátis a partir de USD 500 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30.</li>
+                <li><strong>Carga de cartão novo:</strong> delivery disponível para cargas a partir do dobro do valor mínimo da moeda (ex.: mínimo USD 50, delivery a partir de USD 100), com as mesmas regras de frete do papel-moeda. Abaixo disso, retirada na loja.</li>
+                <li><strong>Venda de moeda:</strong> não há coleta. Você leva as cédulas até a loja mais próxima do seu CEP.</li>
+                <li><strong>Retirada em loja:</strong> combine com um especialista pelo WhatsApp e confira a disponibilidade da moeda no momento.</li>
+              </ul> Consulte a cobertura do delivery para o seu CEP diretamente com um especialista. </div>
+          </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>É seguro fazer operações de câmbio online?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Sim. Somos uma <strong>correspondente cambial autorizada (cód. 07911543)</strong> e seguimos todas as diretrizes do Banco Central. Todas as operações são registradas e você recebe o comprovante oficial da operação. Seus dados são utilizados estritamente para a formalização do câmbio. </div>
           </div>
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="w-full flex justify-between items-center p-4 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Por que preciso enviar meus documentos?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> A M&A Consultoria Câmbio é uma empresa regulamentada. O Banco Central do Brasil exige que todas as operações de câmbio sejam vinculadas a um CPF e devidamente registradas para garantir a segurança e legalidade da transação, tanto para nós quanto para você. Seus dados são mantidos em sigilo absoluto. </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Por que preciso enviar meus documentos?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> A M&A Consultoria Câmbio é uma empresa regulamentada. O Banco Central do Brasil exige que todas as operações de câmbio, de compra ou de venda, sejam vinculadas a um CPF e devidamente registradas para garantir a segurança e legalidade da transação, tanto para nós quanto para você. Seus dados são mantidos em sigilo absoluto. </div>
           </div>
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="w-full flex justify-between items-center p-4 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Vocês fazem entrega (Delivery) ou posso retirar?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Sim, fazemos entrega (delivery) e também oferecemos retirada em loja. Você pode escolher sua preferência no momento do cadastro. Veja os detalhes: <ul class="list-decimal list-inside mt-2 space-y-2">
-                <li><strong>Delivery:</strong> Grátis para compras acima de USD 500 (ou equivalente em outra moeda). Para valores menores, receba com segurança por apenas R$ 30 (consulte a cobertura do seu CEP e a disponibilidade conforme o valor contratado diretamente com um especialista).</li>
-                <li><strong>Retirada em loja:</strong> Basta contatar um de nossos especialistas via whatsapp para conferir a disponibilidade da moeda no momento.</li>
-              </ul>
-            </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Quais são as formas de pagamento aceitas?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Na compra, você pode pagar via <strong>PIX, TED ou transferência bancária</strong>. Além disso, aceitamos <strong>Cartão de Crédito com parcelamento em até 12x</strong> (consulte as taxas com o operador). Na venda, você recebe via <strong>PIX, TED</strong> ou <strong>em espécie na loja</strong>. </div>
           </div>
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="w-full flex justify-between items-center p-4 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Quais são as formas de pagamento aceitas?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Na M&A Consultoria Câmbio, oferecemos total flexibilidade. Você pode pagar via <strong>PIX, TED ou transferência bancária</strong>. Além disso, aceitamos pagamento via <strong>Cartão de Crédito com parcelamento em até 12x</strong> (consulte as taxas com o operador). Tudo de forma prática e segura. </div>
-          </div>
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="w-full flex justify-between items-center p-4 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Por que a cotação é diferente da que vejo no Google?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> O valor exibido no Google refere-se ao <strong>Câmbio Comercial</strong>, utilizado apenas entre bancos e empresas. Para viagens e compra de papel-moeda ou cartão, utiliza-se o <strong>Câmbio Turismo</strong>, que engloba custos de logística, segurança, importação do dinheiro físico e impostos. Nossas taxas são competitivas e já incluem todos esses custos. </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Por que a cotação é diferente da que vejo no Google?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> O valor exibido no Google refere-se ao <strong>Câmbio Comercial</strong>, utilizado apenas entre bancos e empresas. Para viagens e compra ou venda de papel-moeda ou cartão, utiliza-se o <strong>Câmbio Turismo</strong>, que engloba custos de logística, segurança, importação do dinheiro físico e impostos. Nossas taxas são competitivas e já incluem todos esses custos. </div>
           </div>
         </div>
       </div>
     </section>
   </main>
   <footer class="bg-[#2b2a2c] text-white mt-12 py-8 border-t border-[#d6c07a]">
-    <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-4">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-4">
       <div class="text-center md:text-left w-full md:w-auto">
-        <div class="text-sm font-bold text-[#d6c07a] mb-1 flex items-center justify-center md:justify-start gap-2"><span>M&A CONSULTORIA CÂMBIO <i class="ph-bold ph-currency-circle-dollar"></i></span></div>
+        <div class="font-['Raleway'] text-sm font-bold text-[#d6c07a] mb-1 flex items-center justify-center md:justify-start gap-2"><span>M&A CONSULTORIA CÂMBIO <i class="ph-bold ph-currency-circle-dollar"></i></span></div>
         <div class="text-[11px] text-gray-400 tracking-wider">Soluções completas em câmbio turismo e comercial</div>
       </div>
       <div class="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs text-gray-400 font-medium w-full md:w-auto"><button onclick="openInfoModal('termsModal')" class="hover:text-[#d6c07a] transition-colors hover:underline underline-offset-4"> Termos de Uso </button><button onclick="openInfoModal('privacyModal')" class="hover:text-[#d6c07a] transition-colors hover:underline underline-offset-4">Política de Privacidade </button><button onclick="openInfoModal('contactModal')" class="hover:text-[#d6c07a] transition-colors hover:underline underline-offset-4"> Fale Conosco </button></div>
       <div class="text-center md:text-right w-full md:w-auto space-y-1">
-        <div class="text-[10px] text-gray-500 leading-tight"> &copy; 2025 M&A Consultoria Câmbio.<br class="sm:hidden"> Todos os direitos reservados </div>
+        <div class="text-[10px] text-gray-500 leading-tight"> &copy; 2026 M&A Consultoria Câmbio.<br class="sm:hidden"> Todos os direitos reservados </div>
         <div class="text-[10px] text-gray-600 flex items-center justify-center md:justify-end gap-1"><i class="ph-bold ph-code"></i> Dev by <a href="https://lvcascode.com.br" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-[#d6c07a] transition-colors font-semibold border-b border-transparent hover:border-[#d6c07a]"> Lucas Code </a></div>
       </div>
     </div>
@@ -212,7 +276,7 @@
                 </div>
               </div>
               <div class="text-center sm:text-right bg-[#fffdf5] px-6 py-3 rounded-lg border border-[#d6c07a]/20 w-full sm:w-auto sm:min-w-[240px] transition-all select-none">
-                <div class="text-xs text-gray-400 uppercase font-semibold whitespace-nowrap">Total a pagar (BRL)</div>
+                <div id="modalTotalLabel" class="text-xs text-gray-400 uppercase font-semibold whitespace-nowrap">Total a pagar (BRL)</div>
                 <div id="modalTotalBRL" class="font-extrabold text-[#d6c07a] text-2xl tracking-tight mb-1 whitespace-nowrap">--</div>
                 <div id="modalDetails" class="whitespace-nowrap"></div>
               </div>
@@ -240,12 +304,13 @@
                   <div class="sm:col-span-2"><label class="block text-xs font-bold text-gray-600 mb-1">Endereço Completo</label><input type="text" id="clientAddress" required class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all" placeholder="Rua, Número, Bairro, Complemento"></div>
                 </div>
               </div>
-              <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+              <div id="deliveryBlock" class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div class="flex items-center justify-between mb-2">
-                  <h4 class="text-sm font-bold text-gray-800 flex items-center gap-2"><i class="ph-bold ph-truck"></i> Precisa de Entrega? (Câmbio Delivery) </h4><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="deliveryCheck" class="sr-only peer">
+                  <h4 class="text-sm font-bold text-gray-800 flex items-center gap-2"><i class="ph-bold ph-truck"></i> Precisa de Entrega? (Câmbio Delivery) </h4><label id="deliveryToggle" class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="deliveryCheck" class="sr-only peer">
                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#d6c07a]"></div>
                   </label>
                 </div>
+                <p id="deliveryRestriction" class="hidden text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3 mt-2 leading-relaxed"></p>
                 <div id="deliveryFields" class="hidden mt-4 border-t pt-4">
                   <div class="grid grid-cols-1 gap-4">
                     <div><label class="block text-xs font-bold text-gray-600 mb-1">CEP de Entrega</label><input type="text" id="deliveryCEP" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all"></div>
@@ -253,19 +318,44 @@
                   </div>
                 </div>
               </div>
+              <!-- VENDA: entrega das cédulas sempre na loja -->
+              <div id="storeBlock" class="hidden bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <h4 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="ph-bold ph-storefront"></i> Entrega das Cédulas na Loja </h4>
+                <p class="text-xs text-gray-600 leading-relaxed">Na venda, você leva as cédulas até a <strong>loja M&A mais próxima do CEP informado</strong>. Nosso especialista confirma o endereço e o horário pelo WhatsApp. Não realizamos coleta.</p>
+              </div>
+              <!-- VENDA: como o cliente quer receber -->
+              <div id="paymentBlock" class="hidden bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <h4 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2"><i class="ph-bold ph-bank"></i> Como deseja receber? </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                  <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer text-sm font-semibold text-gray-700 has-[:checked]:border-[#d6c07a] has-[:checked]:bg-[#fffdf5]"><input type="radio" name="receiveMethod" value="pix" class="accent-[#d6c07a]"> PIX</label>
+                  <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer text-sm font-semibold text-gray-700 has-[:checked]:border-[#d6c07a] has-[:checked]:bg-[#fffdf5]"><input type="radio" name="receiveMethod" value="ted" class="accent-[#d6c07a]"> TED</label>
+                  <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer text-sm font-semibold text-gray-700 has-[:checked]:border-[#d6c07a] has-[:checked]:bg-[#fffdf5]"><input type="radio" name="receiveMethod" value="especie" class="accent-[#d6c07a]"> Espécie na loja</label>
+                </div>
+                <div id="pixFields" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div><label class="block text-xs font-bold text-gray-600 mb-1">Tipo de chave</label><select id="pixKeyType" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all"><option value="CPF">CPF</option><option value="Celular">Celular</option><option value="E-mail">E-mail</option><option value="Aleatória">Chave aleatória</option></select></div>
+                  <div class="sm:col-span-2"><label class="block text-xs font-bold text-gray-600 mb-1">Chave PIX</label><input type="text" id="pixKey" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all" placeholder="Sua chave PIX"></div>
+                </div>
+                <div id="tedFields" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="sm:col-span-2"><label class="block text-xs font-bold text-gray-600 mb-1">Banco</label><input type="text" id="bankName" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all" placeholder="Nome ou código do banco"></div>
+                  <div><label class="block text-xs font-bold text-gray-600 mb-1">Agência</label><input type="text" id="bankAgency" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all" placeholder="0000"></div>
+                  <div><label class="block text-xs font-bold text-gray-600 mb-1">Conta (com dígito)</label><input type="text" id="bankAccount" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all" placeholder="00000-0"></div>
+                  <div class="sm:col-span-2"><label class="block text-xs font-bold text-gray-600 mb-1">Tipo de conta</label><select id="bankAccountType" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a] transition-all"><option value="Corrente">Corrente</option><option value="Poupança">Poupança</option></select></div>
+                </div>
+                <p id="receiveNote" class="text-[11px] text-gray-500 mt-3 leading-relaxed"><i class="ph-bold ph-info"></i> O PIX ou a TED é feito somente para conta de <strong>mesma titularidade do CPF informado</strong>, após a conferência das cédulas na loja.</p>
+              </div>
               <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <h4 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="ph-bold ph-identification-card"></i> Envio do Documento </h4>
                 <div class="bg-[#fffdf5] border border-[#d6c07a]/30 rounded-lg p-4 flex flex-col items-center text-center gap-3">
                   <div class="w-12 h-12 rounded-full bg-[#d6c07a]/10 flex items-center justify-center text-[#d6c07a] mb-1"><i class="ph-bold ph-whatsapp-logo text-2xl"></i></div>
                   <div>
                     <h5 class="font-bold text-gray-800 text-sm mb-1">Envio Simplificado</h5>
-                    <p class="text-xs text-gray-600 leading-relaxed">Para confirmar sua compra e garantir a segurança dos seus dados, envie uma foto do seu <strong>documento (RG, RNE ou CNH)</strong> para nosso especialista no <strong>WhatsApp</strong>, seguindo as instruções que aparecerão após clicar no botão de confirmação de compra abaixo.</p>
+                    <p class="text-xs text-gray-600 leading-relaxed">Para confirmar sua operação e garantir a segurança dos seus dados, envie uma foto do seu <strong>documento (RG, RNE ou CNH)</strong> para nosso especialista no <strong>WhatsApp</strong>, seguindo as instruções que aparecerão após clicar no botão de confirmação abaixo.</p>
                   </div>
                   <div class="text-[10px] font-bold text-[#d6c07a] uppercase tracking-wide border-t border-[#d6c07a]/20 pt-2 w-full mt-1"> Não é necessário anexar ou pagar nada agora. Basta seguir as instruções após a confirmação. </div>
                 </div>
               </div>
-              <div class="bg-transparent p-5"><p class="text-xs text-gray-600 leading-relaxed"><i class="ph-bold ph-info"></i> Ao prosseguir com a confirmação da compra, você concorda com os nossos <strong><a href="https://maconsultoriacambio.com.br/politicas-privacidade" target="_blank" rel="noopener noreferrer" class="underline hover:text-[#d6c07a]">Termos de Política de Privacidade</a></strong></p></div>
-              <button type="submit" class="w-full mt-6 btn-primary text-gray-800 font-bold text-lg py-4 px-6 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex justify-center items-center gap-2"> Confirmar Compra <i class="ph-bold ph-check-circle text-xl"></i></button>
+              <div class="bg-transparent p-5"><p class="text-xs text-gray-600 leading-relaxed"><i class="ph-bold ph-info"></i> Ao prosseguir com a confirmação da operação, você concorda com os nossos <strong><a href="https://maconsultoriacambio.com.br/politicas-privacidade" target="_blank" rel="noopener noreferrer" class="underline hover:text-[#d6c07a]">Termos de Política de Privacidade</a></strong></p></div>
+              <button type="submit" id="submitBtn" class="w-full mt-6 btn-primary text-gray-800 font-bold text-lg py-4 px-6 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all flex justify-center items-center gap-2"> Confirmar Compra <i class="ph-bold ph-check-circle text-xl"></i></button>
             </form>
             <div id="successStep" class="hidden text-center py-8">
               <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 mb-5 animate-bounce"><i class="ph-fill ph-check-circle text-5xl text-green-600"></i></div>
@@ -273,7 +363,7 @@
               <p class="text-sm text-gray-500 max-w-xs mx-auto mb-8"> Enviamos todos os detalhes de sua operação para seu e-mail </p>
               <div class="bg-[#fffdf5] border border-[#d6c07a]/40 rounded-xl p-6 mx-auto max-w-sm shadow-sm relative">
                 <p class="text-xs text-[#d6c07a] font-bold uppercase tracking-wider mb-2 flex items-center justify-center gap-1"><i class="ph-bold ph-clock"></i> Próximo Passo </p>
-                <p class="text-base text-gray-800 mb-5 font-medium leading-snug">Para efetuar o pagamento de sua operação com segurança e combinar a entrega ou retirada, fale agora com um de nossos especialistas! </p><button id="finalWhatsAppBtn" class="w-full group h-14 px-6 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-lg shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mb-5"><i class="ph-bold ph-whatsapp-logo text-2xl"></i> Falar com Especialista </button>
+                <p id="successNextStep" class="text-base text-gray-800 mb-5 font-medium leading-snug">Para efetuar o pagamento de sua operação com segurança e combinar a entrega ou retirada, fale agora com um de nossos especialistas! </p><button id="finalWhatsAppBtn" class="w-full group h-14 px-6 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-lg shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mb-5"><i class="ph-bold ph-whatsapp-logo text-2xl"></i> Falar com Especialista </button>
                 <div class="border-t border-dashed border-[#d6c07a]/30 pt-4 text-left">
                   <div class="flex items-start gap-3">
                     <div class="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-[#d6c07a] shrink-0 shadow-sm"><i class="ph-bold ph-identification-card text-lg"></i></div>
