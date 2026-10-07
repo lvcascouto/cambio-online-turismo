@@ -79,12 +79,12 @@
         <p id="opSubtitle" class="text-xs text-gray-500 mb-4">Selecione o tipo da sua operação entre Papel-Espécie ou Cartão Pré-pago (carga, recarga ou descarga)</p>
         <!-- Menu principal: Papel Comprar / Papel Vender / Cartão -->
         <div id="opMain" class="grid grid-cols-3 gap-3 mb-8">
-          <button id="btnPapel" type="button" class="op-btn" aria-label="Papel-moeda: comprar">
+          <button id="btnPapel" type="button" class="op-btn" aria-label="Papel espécie: comprar">
             <i class="ph-duotone ph-money text-green-700 icon"></i>
             <span class="op-btn-title"> Papel</span>
             <span class="op-btn-sub text-green-700">Comprar</span>
           </button>
-          <button id="btnVenda" type="button" class="op-btn" aria-label="Papel-moeda: vender">
+          <button id="btnVenda" type="button" class="op-btn" aria-label="Papel espécie: vender">
             <i class="ph-duotone ph-money text-red-600 icon"></i>
             <span class="op-btn-title"> Papel</span>
             <span class="op-btn-sub text-red-600">Vender</span>
@@ -107,11 +107,10 @@
             <span class="op-btn-title"> Recarga</span>
             <span class="op-btn-sub text-blue-700">Cartão M&A</span>
           </button>
-          <button id="btnDescarga" type="button" class="op-btn op-btn-disabled" aria-label="Cartão: descarga (em breve)" aria-disabled="true" title="Em breve">
+          <button id="btnDescarga" type="button" class="op-btn" aria-label="Cartão: descarga do saldo integral do cartão M&A">
             <i class="ph-duotone ph-tag text-red-600 icon"></i>
             <span class="op-btn-title"> Descarga</span>
             <span class="op-btn-sub text-red-600">Cartão M&A</span>
-            <span class="op-btn-badge">Em breve</span>
           </button>
         </div>
         <div>
@@ -160,7 +159,7 @@
         </div>
       </section>
     </div>
-    <section class="glass rounded-2xl p-6 mt-6 card-hover border border-gray-100">
+    <section id="comparisonSection" class="glass rounded-2xl p-6 mt-6 card-hover border border-gray-100">
       <h3 class="font-['Raleway'] text-xl font-bold text-gray-800 mb-1">Comparativo</h3>
       <p id="comparisonHint" class="text-xs text-gray-500 mb-4">Veja a diferença de valores para cada operação e escolha a melhor opção</p>
       <div id="comparisonGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
@@ -191,14 +190,14 @@
           </div>
           <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Quais operações posso fazer pela plataforma?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> <ul class="list-disc list-inside mt-2 space-y-2">
-                <li><strong>Papel-moeda — Comprar:</strong> compra de moeda estrangeira em espécie.</li>
-                <li><strong>Papel-moeda — Vender:</strong> venda das suas cédulas de moeda estrangeira para a M&A.</li>
+                <li><strong>Papel espécie — Comprar:</strong> compra de moeda estrangeira em espécie.</li>
+                <li><strong>Papel espécie — Vender:</strong> venda das suas cédulas de moeda estrangeira para a M&A.</li>
                 <li><strong>Cartão Pré-pago — Carga:</strong> compra de cartão novo com carga.</li>
                 <li><strong>Cartão Pré-pago — Recarga:</strong> recarga do seu cartão M&A, finalizada direto com um especialista no WhatsApp.</li>
-                <li><strong>Cartão Pré-pago — Descarga:</strong> em breve na plataforma. Por enquanto, fale com um especialista.</li>
+                <li><strong>Cartão Pré-pago — Descarga:</strong> venda do saldo integral do seu cartão M&A, finalizada direto com um especialista no WhatsApp.</li>
               </ul> </div>
           </div>
-          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Como funciona a compra de moeda (papel-moeda ou carga de cartão)?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Como funciona a compra de moeda (papel espécie ou carga de cartão)?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> <ol class="list-decimal list-inside mt-2 space-y-2">
                 <li><strong>Simulação:</strong> Em <strong>Operação</strong>, escolha <strong>Papel — Comprar</strong> ou <strong>Cartão — Carga</strong>, selecione a moeda e a quantidade e clique em <strong>"Simular"</strong>.</li>
                 <li><strong>Solicitação:</strong> Confira os detalhes e o comparativo e clique em <strong>"Solicitar Câmbio"</strong> ou <strong>"Solicitar Cartão"</strong>.</li>
@@ -222,13 +221,13 @@
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> <ul class="list-disc list-inside mt-2 space-y-2">
                 <li><strong>Carga (cartão novo):</strong> solicitada pela plataforma, com cadastro. Valores mínimos: USD 50, EUR 40, GBP 30, CAD 50, AUD 50, NZD 50, MXN 900, JPY 8.000 (apenas valores redondos) e CHF 40.</li>
                 <li><strong>Recarga (cartão M&A):</strong> mesmos valores mínimos. Não precisa de cadastro: após a simulação, você é direcionado ao WhatsApp para confirmar os dados do cartão e pagar.</li>
-                <li><strong>Descarga:</strong> em breve na plataforma. Por enquanto, fale com um especialista.</li>
+                <li><strong>Descarga (cartão M&A):</strong> venda do saldo do cartão, sempre do <strong>valor integral</strong>. Não existe descarga parcial: com USD 200 no cartão, a descarga é de USD 200. Moedas: USD, EUR, JPY, GBP, CHF, AUD, CAD, NZD e MXN. Não precisa de cadastro: informe seu nome completo e CPF na simulação e, no WhatsApp, envie uma foto do cartão onde apareça o número completo.</li>
               </ul> </div>
           </div>
           <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Vocês fazem entrega (Delivery) ou posso retirar?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Depende da operação: <ul class="list-disc list-inside mt-2 space-y-2">
-                <li><strong>Compra de papel-moeda:</strong> delivery grátis a partir de USD 500 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30.</li>
-                <li><strong>Carga de cartão novo:</strong> delivery disponível para cargas a partir do dobro do valor mínimo da moeda (ex.: mínimo USD 50, delivery a partir de USD 100), com as mesmas regras de frete do papel-moeda. Abaixo disso, retirada na loja.</li>
+                <li><strong>Compra de papel espécie:</strong> delivery grátis a partir de USD 500 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30.</li>
+                <li><strong>Carga de cartão novo:</strong> delivery disponível para cargas a partir do dobro do valor mínimo da moeda (ex.: mínimo USD 50, delivery a partir de USD 100), com as mesmas regras de frete do papel espécie. Abaixo disso, retirada na loja.</li>
                 <li><strong>Venda de moeda:</strong> não há coleta. Você leva as cédulas até a loja mais próxima do seu CEP.</li>
                 <li><strong>Retirada em loja:</strong> combine com um especialista pelo WhatsApp e confira a disponibilidade da moeda no momento.</li>
               </ul> Consulte a cobertura do delivery para o seu CEP diretamente com um especialista. </div>
@@ -243,7 +242,7 @@
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Na compra, você pode pagar via <strong>PIX, TED ou transferência bancária</strong>. Além disso, aceitamos <strong>Cartão de Crédito com parcelamento em até 12x</strong> (consulte as taxas com o operador). Na venda, você recebe via <strong>PIX, TED</strong> ou <strong>em espécie na loja</strong>. </div>
           </div>
           <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Por que a cotação é diferente da que vejo no Google?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> O valor exibido no Google refere-se ao <strong>Câmbio Comercial</strong>, utilizado apenas entre bancos e empresas. Para viagens e compra ou venda de papel-moeda ou cartão, utiliza-se o <strong>Câmbio Turismo</strong>, que engloba custos de logística, segurança, importação do dinheiro físico e impostos. Nossas taxas são competitivas e já incluem todos esses custos. </div>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> O valor exibido no Google refere-se ao <strong>Câmbio Comercial</strong>, utilizado apenas entre bancos e empresas. Para viagens e compra ou venda de papel espécie ou cartão, utiliza-se o <strong>Câmbio Turismo</strong>, que engloba custos de logística, segurança, importação do dinheiro físico e impostos. Nossas taxas são competitivas e já incluem todos esses custos. </div>
           </div>
         </div>
       </div>
