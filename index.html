@@ -5,23 +5,23 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
   <title>Plataforma de Câmbio Online | M&A Consultoria Câmbio</title>
-  <meta name="description" content="Simule e compre câmbio online com as melhores taxas do mercado. Dólar, Euro, Libras e diversas moedas com segurança e agilidade. Atendimento personalizado da M&A Consultoria Câmbio para você.">
-  <meta name="keywords" content="câmbio, dólar, euro, libra, comprar moeda, casa de câmbio, conversor de moedas, turismo, travel money, conversão, papel moeda, cartão pré pago">
+  <meta name="description" content="Garanta com facilidade sua operação de câmbio online com as melhores taxas do mercado. Dólar, Euro, Libras e diversas moedas com segurança e transparência. Atendimento personalizado da M&A Consultoria Câmbio para você.">
+  <meta name="keywords" content="câmbio, dólar, euro, libra, compra, venda, comprar moeda, vender moeda, casa de câmbio, conversor de moedas, turismo, travel money, conversão, papel moeda, cartão pré pago">
   <meta name="author" content="M&A Consultoria Câmbio">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://cotacaoonline.maconsultoriacambio.com.br/">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://cotacaoonline.maconsultoriacambio.com.br/">
   <meta property="og:title" content="M&A Consultoria Câmbio - Cotação Online Turismo">
-  <meta property="og:description" content="Garanta as melhores taxas em tempo real para sua viagem ou negócios. Simule agora com facilidade e segurança!">
-  <meta property="og:image" content="https://lucas16716.github.io/cambio-online-turismo/assets/img/share-image.jpg">
+  <meta property="og:description" content="Garanta com segurança e em tempo real as melhores taxas para suas operações de moedas estrangeiras. Simule agora com facilidade e segurança!">
+  <meta property="og:image" content="https://lvcascouto.github.io/cambio-online-turismo/assets/img/share-image.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:locale" content="pt_BR">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="M&A Consultoria Câmbio - Cotação Online Turismo">
-  <meta name="twitter:description" content="Simule e compre moedas estrangeiras com segurança total e a facilidade que você merece.">
-  <meta name="twitter:image" content="https://lucas16716.github.io/cambio-online-turismo/assets/img/share-image.jpg">
+  <meta name="twitter:description" content="Simule, avalie e solicite sua operação cambial com segurança total e a facilidade que você merece.">
+  <meta name="twitter:image" content="https://lvcascouto.github.io/cambio-online-turismo/assets/img/share-image.jpg">
   <meta name="theme-color" content="#2b2a2c">
   <meta name="msapplication-navbutton-color" content="#2b2a2c">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -45,8 +45,8 @@
 
     gtag('config', 'AW-738500529');
   </script>
-  <link rel="stylesheet" href="dist/style.min.css"> <!-- Produção -->
-  <!-- <link rel="stylesheet" href="src/css/style.css"> Desenvolvimento -->
+  <!-- <link rel="stylesheet" href="dist/style.min.css"> Produção -->
+  <link rel="stylesheet" href="src/css/style.css"> <!-- Desenvolvimento -->
 </head>
 
 <body class="bg-gray-50 min-h-screen antialiased flex flex-col">
@@ -76,34 +76,40 @@
           <button id="opBackBtn" type="button" class="hidden w-8 h-8 -ml-1 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors" aria-label="Voltar para os tipos de operação"><i class="ph-bold ph-arrow-left text-lg"></i></button>
           <h3 id="opTitle" class="font-['Raleway'] text-xl font-bold text-gray-800">Operação</h3>
         </div>
-        <p id="opSubtitle" class="text-xs text-gray-500 mb-4">Selecione o tipo da sua operação entre Papel-Moeda ou Cartão Pré-pago</p>
+        <p id="opSubtitle" class="text-xs text-gray-500 mb-4">Selecione o tipo da sua operação entre Papel-Espécie ou Cartão Pré-pago (carga, recarga ou descarga)</p>
         <!-- Menu principal: Papel Comprar / Papel Vender / Cartão -->
         <div id="opMain" class="grid grid-cols-3 gap-3 mb-8">
           <button id="btnPapel" type="button" class="op-btn" aria-label="Papel-moeda: comprar">
-            <span class="op-btn-title"><i class="ph-bold ph-money-wavy text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Papel</span>
-            <span class="op-btn-sub text-green-700">Compra</span>
+            <i class="ph-duotone ph-money text-green-700 icon"></i>
+            <span class="op-btn-title"> Papel</span>
+            <span class="op-btn-sub text-green-700">Comprar</span>
           </button>
           <button id="btnVenda" type="button" class="op-btn" aria-label="Papel-moeda: vender">
-            <span class="op-btn-title"><i class="ph-bold ph-money-wavy text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Papel</span>
-            <span class="op-btn-sub text-red-600">Venda</span>
+            <i class="ph-duotone ph-money text-red-600 icon"></i>
+            <span class="op-btn-title"> Papel</span>
+            <span class="op-btn-sub text-red-600">Vender</span>
           </button>
           <button id="btnCartao" type="button" class="op-btn" aria-label="Cartão pré-pago: carga, recarga ou descarga">
-            <span class="op-btn-title"> <i class="ph-bold ph-credit-card text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i>Cartão</span>
-            <!-- <span class="op-btn-sub text-blue-700">Carga / Recarga / Descarga</span> -->
+            <i class="ph-duotone ph-credit-card text-blue-700 icon"></i>
+            <span class="op-btn-title"> Cartão</span>
+            <span class="op-btn-sub text-blue-700">Pré-pago</span>
           </button>
         </div>
         <!-- Submenu do Cartão: Carga / Recarga / Descarga -->
         <div id="opCard" class="hidden grid grid-cols-3 gap-3 mb-8">
           <button id="btnCarga" type="button" class="op-btn" aria-label="Cartão: carga em cartão novo">
-            <span class="op-btn-title"><i class="ph-bold ph-credit-card text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Carga</span>
+            <i class="ph-duotone ph-credit-card text-green-700 icon"></i>
+            <span class="op-btn-title"> Carga</span>
             <span class="op-btn-sub text-green-700">Cartão Novo</span>
           </button>
           <button id="btnRecarga" type="button" class="op-btn" aria-label="Cartão: recarga de cartão M&A">
-            <span class="op-btn-title"><i class="ph-bold ph-arrows-clockwise text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Recarga</span>
+            <i class="ph-duotone ph-arrows-clockwise text-blue-700 icon"></i>
+            <span class="op-btn-title"> Recarga</span>
             <span class="op-btn-sub text-blue-700">Cartão M&A</span>
           </button>
           <button id="btnDescarga" type="button" class="op-btn op-btn-disabled" aria-label="Cartão: descarga (em breve)" aria-disabled="true" title="Em breve">
-            <span class="op-btn-title"><i class="ph-bold ph-tag text-[13px] min-[380px]:text-[14px] min-[415px]:text-[17px] icon"></i> Descarga</span>
+            <i class="ph-duotone ph-tag text-red-600 icon"></i>
+            <span class="op-btn-title"> Descarga</span>
             <span class="op-btn-sub text-red-600">Cartão M&A</span>
             <span class="op-btn-badge">Em breve</span>
           </button>
@@ -162,17 +168,17 @@
     <section class="max-w-7xl mx-auto mt-12 mb-0">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-center group">
-          <div class="w-12 h-12 mx-auto bg-[#fffdf5] rounded-full flex items-center justify-center text-gold mb-4 group-hover:scale-110 transition-transform"><i class="ph-bold ph-shield-check text-2xl"></i></div>
+          <div class="w-12 h-12 mx-auto bg-[#fffdf5] rounded-full flex items-center justify-center text-gold mb-4 group-hover:scale-110 transition-transform"><i class="ph ph-shield-check text-2xl"></i></div>
           <h3 class="font-bold text-gray-800 mb-2">Segurança Total</h3>
           <p class="text-sm text-gray-500 leading-relaxed"> Operações registradas e seguras. Seus dados e valores são tratados com o rigor exigido pelo Banco Central. </p>
         </div>
         <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-center group">
-          <div class="w-12 h-12 mx-auto bg-[#fffdf5] rounded-full flex items-center justify-center text-gold mb-4 group-hover:scale-110 transition-transform"><i class="ph-bold ph-credit-card text-2xl"></i></div>
+          <div class="w-12 h-12 mx-auto bg-[#fffdf5] rounded-full flex items-center justify-center text-gold mb-4 group-hover:scale-110 transition-transform"><i class="ph ph-credit-card text-2xl"></i></div>
           <h3 class="font-bold text-gray-800 mb-2">Facilidade no Pagamento</h3>
           <p class="text-sm text-gray-500 leading-relaxed"> Parcele sua compra em até <span class="font-bold text-gold">12x no cartão de crédito</span>. Aceitamos também PIX, TED e Transferência. </p>
         </div>
         <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-center group">
-          <div class="w-12 h-12 mx-auto bg-[#fffdf5] rounded-full flex items-center justify-center text-gold mb-4 group-hover:scale-110 transition-transform"><i class="ph-bold ph-whatsapp-logo text-2xl"></i></div>
+          <div class="w-12 h-12 mx-auto bg-[#fffdf5] rounded-full flex items-center justify-center text-gold mb-4 group-hover:scale-110 transition-transform"><i class="ph ph-whatsapp-logo text-2xl"></i></div>
           <h3 class="font-bold text-gray-800 mb-2">Atendimento Especializado</h3>
           <p class="text-sm text-gray-500 leading-relaxed"> Após a simulação, finalize tudo com um especialista via WhatsApp. Sem robôs, atendimento humano. </p>
         </div>
@@ -346,7 +352,7 @@
               <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <h4 class="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="ph-bold ph-identification-card"></i> Envio do Documento </h4>
                 <div class="bg-[#fffdf5] border border-[#d6c07a]/30 rounded-lg p-4 flex flex-col items-center text-center gap-3">
-                  <div class="w-12 h-12 rounded-full bg-[#d6c07a]/10 flex items-center justify-center text-[#d6c07a] mb-1"><i class="ph-bold ph-whatsapp-logo text-2xl"></i></div>
+                  <div class="w-12 h-12 rounded-full bg-[#d6c07a]/10 flex items-center justify-center text-[#d6c07a] mb-1"><i class="ph ph-whatsapp-logo text-2xl"></i></div>
                   <div>
                     <h5 class="font-bold text-gray-800 text-sm mb-1">Envio Simplificado</h5>
                     <p class="text-xs text-gray-600 leading-relaxed">Para confirmar sua operação e garantir a segurança dos seus dados, envie uma foto do seu <strong>documento (RG, RNE ou CNH)</strong> para nosso especialista no <strong>WhatsApp</strong>, seguindo as instruções que aparecerão após clicar no botão de confirmação abaixo.</p>
@@ -363,7 +369,7 @@
               <p class="text-sm text-gray-500 max-w-xs mx-auto mb-8"> Enviamos todos os detalhes de sua operação para seu e-mail </p>
               <div class="bg-[#fffdf5] border border-[#d6c07a]/40 rounded-xl p-6 mx-auto max-w-sm shadow-sm relative">
                 <p class="text-xs text-[#d6c07a] font-bold uppercase tracking-wider mb-2 flex items-center justify-center gap-1"><i class="ph-bold ph-clock"></i> Próximo Passo </p>
-                <p id="successNextStep" class="text-base text-gray-800 mb-5 font-medium leading-snug">Para efetuar o pagamento de sua operação com segurança e combinar a entrega ou retirada, fale agora com um de nossos especialistas! </p><button id="finalWhatsAppBtn" class="w-full group h-14 px-6 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-lg shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mb-5"><i class="ph-bold ph-whatsapp-logo text-2xl"></i> Falar com Especialista </button>
+                <p id="successNextStep" class="text-base text-gray-800 mb-5 font-medium leading-snug">Para efetuar o pagamento de sua operação com segurança e combinar a entrega ou retirada, fale agora com um de nossos especialistas! </p><button id="finalWhatsAppBtn" class="w-full group h-14 px-6 rounded-xl bg-[#25D366] hover:bg-[#128C7E] text-white font-bold text-lg shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 mb-5"><i class="ph ph-whatsapp-logo text-2xl"></i> Falar com Especialista </button>
                 <div class="border-t border-dashed border-[#d6c07a]/30 pt-4 text-left">
                   <div class="flex items-start gap-3">
                     <div class="w-8 h-8 rounded-full bg-white border border-gray-100 flex items-center justify-center text-[#d6c07a] shrink-0 shadow-sm"><i class="ph-bold ph-identification-card text-lg"></i></div>
@@ -427,25 +433,25 @@
             <h3 class="text-xl font-bold leading-6 text-gray-900 mb-2">Fale Conosco</h3>
             <p class="text-sm text-gray-500 mb-6">Precisa de ajuda, cotação especial ou suporte?</p>
             <div class="space-y-3"><a href="https://wa.me/5511953505626" target="_blank" class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[#25D366] hover:bg-green-50 transition-all group">
-                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-[#25D366] group-hover:bg-[#25D366] group-hover:text-white transition-colors"><i class="ph-bold ph-whatsapp-logo text-xl"></i></div>
+                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-[#25D366] group-hover:bg-[#25D366] group-hover:text-white transition-colors"><i class="ph ph-whatsapp-logo text-xl"></i></div>
                 <div class="text-left">
                   <p class="text-xs text-gray-500">WhatsApp (Operador 1)</p>
                   <p class="text-sm font-bold text-gray-800">(11) 95350-5626</p>
                 </div>
               </a><a href="https://wa.me/5511938059556" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[#25D366] hover:bg-green-50 transition-all group">
-                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-[#25D366] group-hover:bg-[#25D366] group-hover:text-white transition-colors"><i class="ph-bold ph-whatsapp-logo text-xl"></i></div>
+                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-[#25D366] group-hover:bg-[#25D366] group-hover:text-white transition-colors"><i class="ph ph-whatsapp-logo text-xl"></i></div>
                 <div class="text-left">
                   <p class="text-xs text-gray-500">WhatsApp (Operador 2)</p>
                   <p class="text-sm font-bold text-gray-800">(11) 93805-9556</p>
                 </div>
               </a><a href="tel:+551154691963" class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-gold hover:bg-[#fffdf5] transition-all group">
-                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gold group-hover:text-white transition-colors"><i class="ph-bold ph-phone text-xl"></i></div>
+                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gold group-hover:text-white transition-colors"><i class="ph ph-phone text-xl"></i></div>
                 <div class="text-left">
                   <p class="text-xs text-gray-500">Telefone Fixo</p>
                   <p class="text-sm font-bold text-gray-800">(11) 5469-1963</p>
                 </div>
               </a><a href="mailto:contato@maconsultoriacambio.com.br" class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-gold hover:bg-[#fffdf5] transition-all group">
-                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gold group-hover:text-white transition-colors"><i class="ph-bold ph-envelope-simple text-xl"></i></div>
+                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gold group-hover:text-white transition-colors"><i class="ph ph-envelope-simple text-xl"></i></div>
                 <div class="text-left">
                   <p class="text-xs text-gray-500">E-mail</p>
                   <p class="text-sm font-bold text-gray-800">contato@maconsultoriacambio.com.br</p>
@@ -453,7 +459,7 @@
               </a></div>
             <div class="mt-6 pt-5 border-t border-gray-100 text-center">
               <p class="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-4">Siga nossas redes</p>
-              <div class="flex justify-center gap-4"><a href="https://www.instagram.com/macambiochangeexchange/" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gradient-to-tr hover:from-[#833ab4] hover:via-[#fd1d1d] hover:to-[#fcb045] hover:border-transparent transition-all shadow-sm"><i class="ph-bold ph-instagram-logo text-xl"></i></a><a href="https://www.linkedin.com/company/ma-consultoria-cambio-change-exchange/" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#0077b5] hover:border-transparent transition-all shadow-sm"><i class="ph-bold ph-linkedin-logo text-xl"></i></a><a href="https://www.facebook.com/maconsultoriacambio" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#1877f2] hover:border-transparent transition-all shadow-sm"><i class="ph-bold ph-facebook-logo text-xl"></i></a></div>
+              <div class="flex justify-center gap-4"><a href="https://www.instagram.com/macambiochangeexchange/" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gradient-to-tr hover:from-[#833ab4] hover:via-[#fd1d1d] hover:to-[#fcb045] hover:border-transparent transition-all shadow-sm"><i class="ph ph-instagram-logo text-xl"></i></a><a href="https://www.linkedin.com/company/ma-consultoria-cambio-change-exchange/" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#0077b5] hover:border-transparent transition-all shadow-sm"><i class="ph ph-linkedin-logo text-xl"></i></a><a href="https://www.facebook.com/maconsultoriacambio" target="_blank" rel="noopener noreferrer" class="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-400 hover:text-white hover:bg-[#1877f2] hover:border-transparent transition-all shadow-sm"><i class="ph ph-facebook-logo text-xl"></i></a></div>
             </div>
           </div>
           <div class="bg-gray-50 px-6 py-3 flex flex-row-reverse"><button type="button" class="w-full sm:w-auto inline-flex justify-center rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-300 transition-all" onclick="closeInfoModal('contactModal')">Fechar</button></div>

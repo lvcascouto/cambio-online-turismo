@@ -938,10 +938,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateCurrencyListHint() {
     if (!currencyListHint) return;
     const hints = {
-      papel: "Selecione a moeda estrangeira que deseja comprar",
+      papel: "Selecione a moeda estrangeira que deseja comprar em espécie",
       venda:
         "Valor que a M&A paga por unidade (taxas válidas para cédulas de série atual)",
-      carga: "Selecione a moeda da carga do seu cartão novo",
+      carga: "Selecione a moeda da carga do seu cartão novo da M&A",
       recarga: "Selecione a moeda da recarga do seu cartão M&A",
     };
     const key = currentMode === "cartao" ? cardOp : currentMode;
