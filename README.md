@@ -62,7 +62,7 @@ O cliente escolhe a operação no card **Operação**:
 | **Papel — Comprar**   | Compra de moeda estrangeira em espécie        | Cadastro na plataforma + e-mails + WhatsApp       |
 | **Papel — Vender**    | Venda das cédulas do cliente para a M&A       | Cadastro na plataforma + e-mails + WhatsApp       |
 | **Cartão — Carga**    | Compra de cartão pré-pago novo com carga      | Cadastro na plataforma + e-mails + WhatsApp       |
-| **Cartão — Recarga**  | Recarga de cartão M&A que o cliente já possui | Direto no WhatsApp, sem cadastro                  |
+| **Cartão — Recarga**  | Recarga de cartão M&A que o cliente já possui | Nome e CPF na plataforma + WhatsApp, sem cadastro |
 | **Cartão — Descarga** | Venda do saldo integral do cartão M&A         | Nome e CPF na plataforma + WhatsApp, sem cadastro |
 
 Moedas exóticas na compra e moedas sem taxa na venda são tratadas como **sob consulta** e levam o cliente direto ao especialista no WhatsApp.
