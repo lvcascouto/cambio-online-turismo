@@ -109,6 +109,12 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
   // Linhas do gviz = linha da planilha − 2 (K22 → 20, K30 → 28).
   // Se a coluna J tiver o código da moeda, a leitura usa o código; senão, a ordem acima.
+  // IOF da descarga: 0,38%, descontado do valor que o cliente recebe.
+  // A taxa da planilha (K22:K30) já é a VET líquida, ou seja, já com o IOF descontado.
+  const UNLOAD_IOF_RATE = 0.0038;
+  // IOF da venda de papel espécie: 3,5%, também descontado do valor a receber.
+  // A taxa da planilha (H22:I28) já é a VET líquida, com o IOF descontado.
+  const SELL_IOF_RATE = 0.035;
   const UNLOAD_SHEET_ROWS = { from: 20, to: 28 };
 
   // --- VENDA DE PAPEL-MOEDA (cliente vende, M&A compra) ---
@@ -714,20 +720,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!data) return null;
 
-    // VENDA e DESCARGA: a taxa da planilha já é a final. O cliente recebe quantidade × taxa.
-    if (mode === "venda" || mode === "descarga") {
+    // VENDA e DESCARGA: a taxa da planilha (VET) já é líquida de IOF.
+    // Total a receber = saldo × VET (intocável, em centavos inteiros).
+    // Detalhamento: Cotação Turismo = VET / (1 − IOF), Valor Líquido = saldo × Cotação Turismo,
+    // e o IOF é a diferença, para a conta sempre fechar no centavo.
+    if (mode === "descarga" || mode === "venda") {
+      const iofRate = mode === "venda" ? SELL_IOF_RATE : UNLOAD_IOF_RATE;
       const VET = Number(data.raw);
       const totalBRL_cents = Math.round(amount * VET * 100);
+      const baseRate = Number((VET / (1 - iofRate)).toFixed(4));
+      const conversionBase_cents = Math.round(amount * baseRate * 100);
+      const totalIOF_cents = conversionBase_cents - totalBRL_cents;
       return {
         mode,
         cardOp: null,
         isSell: true,
         currencyCode,
         amount,
-        cotaçãoBase: VET,
-        conversionBase: totalBRL_cents / 100,
-        iofRate: 0,
-        totalIOFValue: 0,
+        cotaçãoBase: baseRate,
+        conversionBase: conversionBase_cents / 100,
+        iofRate: iofRate,
+        totalIOFValue: totalIOF_cents / 100,
         totalBRL: totalBRL_cents / 100,
         VET: VET,
         rateDisplay: data.display,
@@ -1376,13 +1389,66 @@ Pode me informar a taxa e a loja mais próxima para eu levar as cédulas?`;
   }
 
   // --- DESCARGA DE CARTÃO: simulação + nome/CPF + WhatsApp ---
-  // Cliente já é da M&A: não preenche cadastro. Informa nome e CPF aqui e envia
-  // a foto do cartão (com o número completo) ao especialista pelo WhatsApp.
-  function renderUnload(currencyCode, amount) {
-    // Preserva o que o cliente já digitou (a tela é redesenhada a cada atualização de taxas)
-    const typedName = getEl("unloadName")?.value || "";
-    const typedCPF = getEl("unloadCPF")?.value || "";
+  // --- IDENTIFICAÇÃO DO TITULAR (recarga e descarga de cartão) ---
+  // Cliente já é da M&A: não preenche cadastro. Informa nome e CPF e envia a
+  // foto do cartão (com o número completo) ao especialista pelo WhatsApp.
+  // O que foi digitado fica guardado, porque a tela é redesenhada a cada
+  // atualização de taxas e ao trocar entre recarga e descarga.
+  const cardHolder = { name: "", cpf: "" };
 
+  function cardHolderBlockHTML(opName) {
+    return `
+      <div class="mt-4 p-4 rounded-lg border border-gray-200 bg-white">
+        <p class="text-sm font-bold text-gray-800 mb-1 flex items-center gap-2"><i class="ph-bold ph-identification-card text-[#d6c07a]"></i> Identificação do titular</p>
+        <p class="text-xs text-gray-500 mb-3">Para o especialista localizar seu cadastro. Não é preciso preencher o cadastro completo.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="sm:col-span-2"><label for="unloadName" class="block text-xs font-bold text-gray-600 mb-1">Nome completo</label><input type="text" id="unloadName" autocomplete="name" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a]" placeholder="Igual ao documento"></div>
+          <div class="sm:col-span-2"><label for="unloadCPF" class="block text-xs font-bold text-gray-600 mb-1">CPF</label><input type="text" id="unloadCPF" inputmode="numeric" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a]" placeholder="000.000.000-00"></div>
+        </div>
+        <p class="text-xs text-gray-600 mt-3 leading-relaxed flex items-start gap-1.5"><i class="ph-bold ph-camera text-[#d6c07a] mt-0.5"></i><span>No WhatsApp, envie uma <strong>foto do cartão onde apareça o número completo</strong>, para o especialista fazer a ${opName}.</span></p>
+      </div>`;
+  }
+
+  // Liga os campos (restaura o digitado e aplica a máscara do CPF)
+  function mountCardHolderInputs() {
+    const nameInput = getEl("unloadName");
+    const cpfInput = getEl("unloadCPF");
+    if (!nameInput || !cpfInput) return;
+    nameInput.value = cardHolder.name;
+    cpfInput.value = cardHolder.cpf;
+    nameInput.addEventListener("input", (e) => {
+      cardHolder.name = e.target.value;
+    });
+    cpfInput.addEventListener("input", (e) => {
+      e.target.value = e.target.value
+        .replace(/\D/g, "")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+        .replace(/(-\d{2})\d+?$/, "$1");
+      cardHolder.cpf = e.target.value;
+    });
+  }
+
+  // Valida nome completo e CPF. Retorna { name, cpf } ou null (e mostra o erro).
+  function readCardHolder(opName) {
+    const name = getEl("unloadName").value.trim().replace(/\s+/g, " ");
+    const cpf = getEl("unloadCPF").value.trim();
+    if (name.split(" ").length < 2) {
+      getEl("unloadName").focus();
+      showError(`Informe seu nome completo para a ${opName}.`);
+      return null;
+    }
+    if (!isValidCPF(cpf)) {
+      getEl("unloadCPF").focus();
+      showError(`Informe um CPF válido para a ${opName}.`);
+      return null;
+    }
+    return { name, cpf };
+  }
+
+  // --- DESCARGA DE CARTÃO: simulação + identificação do titular + WhatsApp ---
+  function renderUnload(currencyCode, amount) {
     const consult = isSellConsult(currencyCode);
     const res = consult
       ? null
@@ -1400,45 +1466,26 @@ Pode me informar a taxa e a loja mais próxima para eu levar as cédulas?`;
     resultValue.textContent = res ? formatBRL(res.totalBRL) : "Sob consulta";
     renderQuoteTime(res ? res.time : lastFetchTime || new Date());
 
-    calcDetails.innerHTML = `
+    const detailRows = res
+      ? renderSellBreakdown(res, "Saldo do cartão (integral)")
+      : `
       <div class="flex justify-between text-sm border-b pb-2 mb-2">
         <span class="text-gray-600">Saldo do cartão (integral)</span>
         <span class="font-mono">${formatAmount(amount)} ${currencyCode}</span>
       </div>
       <div class="flex justify-between text-sm pt-1">
-        <span class="text-gray-600 flex items-center gap-1">Taxa de Descarga Unitária
-          <span class="tooltip"><i class="ph-bold ph-info cursor-pointer hover:text-[#d6c07a] transition-colors"></i><span class="tooltiptext font-normal normal-case tracking-normal text-left">Valor que a M&A paga por unidade do saldo do cartão. O total a receber é o saldo multiplicado por esta taxa.</span></span>
-        </span>
-        <span class="font-mono font-bold text-[#d6c07a]">${res ? `R$ ${formatRate(res.VET)}` : "Sob consulta"}</span>
-      </div>
-      <div class="mt-4 p-4 rounded-lg border border-gray-200 bg-white">
-        <p class="text-sm font-bold text-gray-800 mb-1 flex items-center gap-2"><i class="ph-bold ph-identification-card text-[#d6c07a]"></i> Identificação do titular</p>
-        <p class="text-xs text-gray-500 mb-3">Para o especialista localizar seu cadastro. Não é preciso preencher o cadastro completo.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="sm:col-span-2"><label for="unloadName" class="block text-xs font-bold text-gray-600 mb-1">Nome completo</label><input type="text" id="unloadName" autocomplete="name" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a]" placeholder="Igual ao documento"></div>
-          <div class="sm:col-span-2"><label for="unloadCPF" class="block text-xs font-bold text-gray-600 mb-1">CPF</label><input type="text" id="unloadCPF" inputmode="numeric" class="w-full h-11 px-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#d6c07a] focus:border-[#d6c07a]" placeholder="000.000.000-00"></div>
-        </div>
-        <p class="text-xs text-gray-600 mt-3 leading-relaxed flex items-start gap-1.5"><i class="ph-bold ph-camera text-[#d6c07a] mt-0.5"></i><span>No WhatsApp, envie uma <strong>foto do cartão onde apareça o número completo</strong>, para o especialista fazer a descarga.</span></p>
+        <span class="text-gray-600">Taxa VET Unitária</span>
+        <span class="font-mono font-bold text-[#d6c07a]">Sob consulta</span>
       </div>`;
+
+    calcDetails.innerHTML = detailRows + cardHolderBlockHTML("descarga");
     insertResultNotice(
       "Descarga somente do saldo integral",
       "Não existe descarga parcial: é vendido todo o saldo do cartão na moeda escolhida (ex.: com USD 200 no cartão, a descarga é de USD 200).",
       "blue",
     );
 
-    // Restaura o que foi digitado e aplica a máscara do CPF
-    const nameInput = getEl("unloadName");
-    const cpfInput = getEl("unloadCPF");
-    nameInput.value = typedName;
-    cpfInput.value = typedCPF;
-    cpfInput.addEventListener("input", (e) => {
-      e.target.value = e.target.value
-        .replace(/\D/g, "")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d{1,2})/, "$1-$2")
-        .replace(/(-\d{2})\d+?$/, "$1");
-    });
+    mountCardHolderInputs();
 
     updateComparison(currencyCode, amount);
 
@@ -1446,21 +1493,17 @@ Pode me informar a taxa e a loja mais próxima para eu levar as cédulas?`;
       label: "Solicitar Descarga no WhatsApp",
       style: "whatsapp",
       onClick: () => {
-        const name = getEl("unloadName").value.trim().replace(/\s+/g, " ");
-        const cpf = getEl("unloadCPF").value.trim();
-        if (name.split(" ").length < 2) {
-          getEl("unloadName").focus();
-          return showError("Informe seu nome completo para a descarga.");
-        }
-        if (!isValidCPF(cpf)) {
-          getEl("unloadCPF").focus();
-          return showError("Informe um CPF válido para a descarga.");
-        }
+        const holder = readCardHolder("descarga");
+        if (!holder) return;
+        const { name, cpf } = holder;
         const valueLines = res
-          ? `• *Taxa de descarga:* R$ ${formatRate(res.VET)}
+          ? `• *Valor líquido:* ${formatBRL(res.conversionBase)}
+• *Cotação turismo:* R$ ${formatRate(res.cotaçãoBase)}
+• *IOF (${(UNLOAD_IOF_RATE * 100).toFixed(2).replace(".", ",")}%):* − ${formatBRL(res.totalIOFValue)}
+• *VET Final:* R$ ${formatRate(res.VET)}
 
 👉 *VALOR ESTIMADO A RECEBER: ${formatBRL(res.totalBRL)}*`
-          : `• *Taxa de descarga:* sob consulta (pode me informar?)`;
+          : `• *VET:* sob consulta (pode me informar?)`;
         const msg = `Olá, M&A Consultoria Câmbio! 😊
 
 Meu nome é *${name}* (CPF *${cpf}*).
@@ -1474,6 +1517,45 @@ ${valueLines}
         sendToWhatsAppAndReset(msg);
       },
     });
+  }
+
+  // Detalhamento das operações em que o cliente recebe (venda e descarga):
+  // mesmas linhas da compra, com o IOF descontado do valor a receber.
+  function renderSellBreakdown(res, amountLabel) {
+    const iofPct = (res.iofRate * 100).toFixed(2).replace(".", ",");
+    const row = (label, tip, value, last) => `
+      <div class="flex justify-between text-sm ${last ? "pt-1" : "border-b pb-2 mb-2"}">
+        <span class="text-gray-600 flex items-center gap-1">${label}${tip ? ` <span class="tooltip"><i class="ph-bold ph-info cursor-pointer hover:text-[#d6c07a] transition-colors"></i><span class="tooltiptext font-normal normal-case tracking-normal text-left">${tip}</span></span>` : ""}</span>
+        ${value}
+      </div>`;
+    return (
+      row(
+        amountLabel,
+        "",
+        `<span class="font-mono">${formatAmount(res.amount)} ${res.currencyCode}</span>`,
+      ) +
+      row(
+        "Valor Líquido",
+        "Valor total convertido sem impostos",
+        `<span class="font-mono">${formatBRL(res.conversionBase)}</span>`,
+      ) +
+      row(
+        "Cotação Turismo",
+        "Valor unitário da moeda sem impostos",
+        `<span class="font-mono">R$ ${formatRate(res.cotaçãoBase)}</span>`,
+      ) +
+      row(
+        `IOF (${iofPct}%)`,
+        "Imposto obrigatório sobre Operações Financeiras, descontado do valor a receber",
+        `<span class="font-mono">− ${formatBRL(res.totalIOFValue)}</span>`,
+      ) +
+      row(
+        "Taxa VET Unitária",
+        "O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen. O total a receber é o Valor Líquido menos o IOF.",
+        `<span class="font-mono font-bold text-[#d6c07a]">R$ ${formatRate(res.VET)}</span>`,
+        true,
+      )
+    );
   }
 
   // --- FUNÇÃO DE EXIBIÇÃO PRINCIPAL ---
@@ -1540,17 +1622,7 @@ ${valueLines}
     // 4. Detalhes
     if (calcDetails) {
       if (res.isSell) {
-        calcDetails.innerHTML = `
-        <div class="flex justify-between text-sm border-b pb-2 mb-2">
-          <span class="text-gray-600">Quantidade</span>
-          <span class="font-mono">${formatAmount(res.amount)} ${res.currencyCode}</span>
-        </div>
-        <div class="flex justify-between text-sm pt-1">
-          <span class="text-gray-600 flex items-center gap-1">Taxa de Venda Unitária
-            <span class="tooltip"><i class="ph-bold ph-info cursor-pointer hover:text-[#d6c07a] transition-colors"></i><span class="tooltiptext font-normal normal-case tracking-normal text-left">Valor que a M&A paga por unidade da moeda, já com o IOF considerado. O total a receber é a quantidade multiplicada por esta taxa.</span></span>
-          </span>
-          <span class="font-mono font-bold text-[#d6c07a]">R$ ${formatRate(res.VET)}</span>
-        </div>`;
+        calcDetails.innerHTML = renderSellBreakdown(res, "Quantidade");
         insertResultNotice("Atenção às cédulas", SELL_NOTES_NOTICE, "gray");
       } else {
         const iofPct = (res.iofRate * 100).toFixed(2).replace(".", ",");
@@ -1593,25 +1665,38 @@ ${valueLines}
         onClick: openModal,
       });
     } else if (currentMode === "cartao" && cardOp === "recarga") {
+      calcDetails.insertAdjacentHTML(
+        "beforeend",
+        cardHolderBlockHTML("recarga"),
+      );
+      mountCardHolderInputs();
       insertResultNotice(
         "Recarga direto com o especialista",
-        "A recarga do seu cartão M&A não precisa de cadastro: você será direcionado ao WhatsApp para confirmar os dados do cartão e efetuar o pagamento.",
+        "Como você já é cliente M&A, a recarga não precisa de cadastro completo: informe seu nome e CPF abaixo e você será direcionado ao WhatsApp para enviar a foto do cartão e efetuar o pagamento.",
         "blue",
       );
       setActionButton({
         label: "Solicitar Recarga no WhatsApp",
         style: "whatsapp",
         onClick: () => {
+          const holder = readCardHolder("recarga");
+          if (!holder) return;
+          const iofPct = (res.iofRate * 100).toFixed(2).replace(".", ",");
           const msg = `Olá, M&A Consultoria Câmbio! 😊
 
-Gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
+Meu nome é *${holder.name}* (CPF *${holder.cpf}*).
+
+Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
 
 • *Moeda:* ${formatAmount(res.amount)} ${res.currencyCode}
-• *VET (com IOF):* R$ ${formatRate(res.VET)}
+• *Valor líquido:* ${formatBRL(res.conversionBase)}
+• *Cotação turismo:* R$ ${formatRate(res.cotaçãoBase)}
+• *IOF (${iofPct}%):* ${formatBRL(res.totalIOFValue)}
+• *VET Final:* R$ ${formatRate(res.VET)}
 
-👉 *TOTAL ESTIMADO: ${formatBRL(res.totalBRL)}*
+👉 *TOTAL ESTIMADO A PAGAR: ${formatBRL(res.totalBRL)}*
 
-Pode me ajudar a confirmar os dados do cartão e finalizar o pagamento?`;
+📎 Estou enviando a foto do cartão com o número completo para vocês fazerem a recarga.`;
           sendToWhatsAppAndReset(msg);
         },
       });
@@ -1711,7 +1796,15 @@ Pode me ajudar a confirmar os dados do cartão e finalizar o pagamento?`;
               : null,
           rows:
             sell && sell.VET > 0
-              ? [["Taxa de Venda Un.", `R$ ${formatRate(sell.VET)}`]]
+              ? [
+                  ["Valor Líquido", formatBRL(sell.conversionBase)],
+                  ["Cotação Turismo", `R$ ${formatRate(sell.cotaçãoBase)}`],
+                  [
+                    `IOF (${(sell.iofRate * 100).toFixed(2).replace(".", ",")}%)`,
+                    `− ${formatBRL(sell.totalIOFValue)}`,
+                  ],
+                  ["Taxa VET Un.", `R$ ${formatRate(sell.VET)}`],
+                ]
               : [],
           unavailableText: sellConsult
             ? "Cotação sob consulta no WhatsApp"
@@ -1880,9 +1973,10 @@ Pode me ajudar a confirmar os dados do cartão e finalizar o pagamento?`;
           ?.classList.contains("hidden") ?? true;
 
       const rowsHtml = isSell
-        ? `<div class="flex justify-between text-gray-500"><span>Quantidade:</span><span class="font-mono">${formatAmount(currentQuote.amount)} ${currentQuote.currencyCode}</span></div>
+        ? `<div class="flex justify-between text-gray-500"><span>Valor Líquido:</span><span class="font-mono">${formatBRL(currentQuote.conversionBase)}</span></div>
+          <div class="flex justify-between text-gray-500"><span>IOF (${iofPct}%):</span><span class="font-mono">− ${formatBRL(currentQuote.totalIOFValue)}</span></div>
           <div class="flex justify-between text-gray-800 font-semibold mt-1 pt-1 border-t border-dashed border-gray-200">
-            <span class="flex items-center gap-1">Taxa de Venda:</span>
+            <span class="flex items-center gap-1">VET Final:</span>
             <span class="font-mono text-[#d6c07a]">R$ ${formatRate(currentQuote.VET)}</span>
           </div>`
         : `<div class="flex justify-between text-gray-500"><span>Valor Líquido:</span><span class="font-mono">${formatBRL(currentQuote.conversionBase)}</span></div>
@@ -2134,7 +2228,9 @@ Pode me ajudar a confirmar os dados do cartão e finalizar o pagamento?`;
             timeZone: "America/Sao_Paulo",
           }),
           exchange_rate: formatRate(q.cotaçãoBase),
-          iof_value: q.isSell ? "Incluso na taxa" : formatBRL(q.totalIOFValue),
+          iof_value: q.isSell
+            ? `${formatBRL(q.totalIOFValue)} (${(q.iofRate * 100).toFixed(2).replace(".", ",")}%, descontado)`
+            : formatBRL(q.totalIOFValue),
           vet_rate: formatRate(q.VET),
           total_brl: formatBRL(q.finalTotalBRL || q.totalBRL),
           operation_type: getOperationLabel(q),
@@ -2275,7 +2371,10 @@ Pode me ajudar a confirmar os dados do cartão e finalizar o pagamento?`;
       lines = [
         `• *Operação:* Papel Espécie — Venda 💵`,
         `• *Moeda:* ${formatAmount(q.amount)} ${q.currencyCode}`,
-        `• *Taxa de venda (com IOF):* R$ ${formatRate(q.VET)}`,
+        `• *Valor líquido:* ${formatBRL(q.conversionBase)}`,
+        `• *Cotação turismo:* R$ ${formatRate(q.cotaçãoBase)}`,
+        `• *IOF (${(q.iofRate * 100).toFixed(2).replace(".", ",")}%):* − ${formatBRL(q.totalIOFValue)}`,
+        `• *VET Final:* R$ ${formatRate(q.VET)}`,
         `• *Recebimento:* ${info.method === "Espécie" ? info.details : `${info.method} — ${info.details}`}`,
         `• *Entrega das cédulas:* na loja mais próxima do meu CEP *${clientCep}*`,
         ``,
