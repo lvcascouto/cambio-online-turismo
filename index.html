@@ -57,17 +57,35 @@
       Voltar para o site
       <i class="ph ph-arrow-up-right text-base"></i>
     </a> 
-    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left">
-      <div class="flex-1 flex flex-col md:flex-row items-center gap-4 md:gap-5 w-full">
-        <div class="logo-badge shadow-lg shrink-0"><img src="./assets/img/logo-MA.png" alt="Logo M&A Consultoria Câmbio" class="w-18 h-18 object-contain"></div>
-        <div class="flex flex-col items-center md:items-start"><span class="font-['Raleway'] text-base md:text-lg font-semibold text-gold">M&A Consultoria Câmbio</span>
+    
+    <!-- Contêiner principal agora sempre em coluna (flex-col) -->
+    <div class="max-w-7xl mx-auto px-4 flex flex-col gap-6 md:gap-8 text-center md:text-left">
+      
+      <!-- Bloco 1: Logo e Textos -->
+      <div class="flex flex-col md:flex-row items-center gap-4 md:gap-5 w-full">
+        <div class="logo-badge shadow-lg shrink-0">
+          <img src="./assets/img/logo-MA.png" alt="Logo M&A Consultoria Câmbio" class="w-18 h-18 object-contain">
+        </div>
+        <div class="flex flex-col items-center md:items-start">
+          <span class="font-['Raleway'] text-base md:text-lg font-semibold text-gold">M&A Consultoria Câmbio</span>
           <h1 class="font-['Raleway'] text-2xl sm:text-3xl md:text-4xl font-extrabold text-white flex items-center gap-2 mt-1 md:mt-0 justify-center md:justify-start"> PLATAFORMA DE CÂMBIO </h1>
-          <p class="text-xs text-gray-300 mt-2 md:mt-1 tracking-wide max-w-md md:max-w-none mx-auto md:mx-0">Garanta com facilidade e em tempo real as melhores taxas para suas operações de moedas estrangeiras </p>
+          <p class="text-xs text-gray-300 mt-2 md:mt-1 tracking-wide max-w-md md:max-w-none mx-auto md:mx-0">Garanta com facilidade e em tempo real as melhores taxas para suas operações de moedas estrangeiras</p>
         </div>
       </div>
-      <div class="flex-none mt-2 md:mt-0">
+      
+      <!-- Bloco 2: Badges de Atualização (Agora quebrado para a linha de baixo) -->
+      <div class="flex flex-col items-center md:items-start gap-2 mb-4 md:mb-0">
         <div id="dataStatus" class="text-xs text-white/60 small-muted hidden bg-white/5 px-3 py-1 rounded-full border border-white/10">Carregando cotações...</div>
+        <!-- Selo de cotações atualizadas -->
+        <div id="ratesBadge" class="hidden items-center gap-2 text-left text-xs text-white/80 bg-white/5 px-3 py-2.5 rounded-full border border-white/10" role="status" aria-live="polite">
+          <span class="relative flex h-2 w-2 shrink-0">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+          </span>
+          <span>Cotações atualizadas automaticamente · <span id="ratesUpdatedAt" class="font-semibold text-white">—</span></span>
+        </div>
       </div>
+
     </div>
   </header>
   <main class="max-w-7xl mx-auto px-4 -mt-10 flex-grow w-full z-10 relative pb-12">
@@ -241,6 +259,9 @@
           </div>
           <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Quais são as formas de pagamento aceitas?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Na compra, você pode pagar via <strong>PIX, TED ou transferência bancária</strong>. Além disso, aceitamos <strong>Cartão de Crédito com parcelamento em até 12x</strong> (consulte as taxas com o operador). Na venda, você recebe via <strong>PIX, TED</strong> ou <strong>em espécie na loja</strong>. </div>
+          </div>
+          <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>As cotações da plataforma são atualizadas?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Sim. As taxas acompanham o mercado e são <strong>atualizadas automaticamente ao longo do dia</strong>. A plataforma confere as cotações a cada 10 minutos e mostra, no topo da página e no resultado da simulação, o <strong>horário da última atualização</strong>. Ao clicar em <strong>"Simular"</strong>, as taxas também são conferidas na hora. O valor final é confirmado pelo nosso especialista no fechamento da operação, conforme os Termos de Uso. </div>
           </div>
           <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Por que a cotação é diferente da que vejo no Google?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> O valor exibido no Google refere-se ao <strong>Câmbio Comercial</strong>, utilizado apenas entre bancos e empresas. Para viagens e compra ou venda de papel espécie ou cartão, utiliza-se o <strong>Câmbio Turismo</strong>, que engloba custos de logística, segurança, importação do dinheiro físico e impostos. Nossas taxas são competitivas e já incluem todos esses custos. </div>

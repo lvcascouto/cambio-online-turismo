@@ -167,6 +167,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const errorMsg = getEl("errorMsg");
   const lastUpdate = getEl("lastUpdate");
   const nextUpdate = getEl("nextUpdate");
+  const ratesBadge = getEl("ratesBadge");
+  const ratesUpdatedAt = getEl("ratesUpdatedAt");
   const buyBtn = getEl("buyBtn");
   const budgetModal = getEl("budgetModal");
   const closeModalBtn = getEl("closeModalBtn");
@@ -296,6 +298,42 @@ document.addEventListener("DOMContentLoaded", () => {
   let cardOp = "carga";
   let available = {};
   let lastFetchTime = null;
+  // Hora real da última atualização das taxas, lida da planilha (coluna E,
+  // "Data e hora ult. atualização"). Se não vier, usa a hora da leitura.
+  let ratesUpdatedLabel = "";
+
+  // Aceita "23/10/2026 19:29:04" (texto) ou "Date(2026,9,23,19,29,4)" (gviz)
+  function parseSheetDateTime(cell) {
+    const raw = String(cell?.f ?? cell?.v ?? "").trim();
+    let m = raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\D+(\d{1,2}):(\d{2})/);
+    if (m) {
+      const [, d, mo, y, h, mi] = m;
+      return `${d.padStart(2, "0")}/${mo.padStart(2, "0")}/${y} às ${h.padStart(2, "0")}:${mi}`;
+    }
+    m = String(cell?.v ?? "").match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2}),(\d{1,2}),(\d{1,2})/);
+    if (m) {
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${pad(m[3])}/${pad(Number(m[2]) + 1)}/${m[1]} às ${pad(m[4])}:${pad(m[5])}`;
+    }
+    return "";
+  }
+
+  function formatFetchTime(date) {
+    return `${date.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} às ${date.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}`;
+  }
+
+  function updateRatesBadge(ok) {
+    if (!ratesBadge) return;
+    if (!ok) {
+      ratesBadge.classList.add("hidden");
+      ratesBadge.classList.remove("flex");
+      return;
+    }
+    if (ratesUpdatedAt)
+      ratesUpdatedAt.textContent = `Última atualização: ${ratesUpdatedLabel}`;
+    ratesBadge.classList.remove("hidden");
+    ratesBadge.classList.add("flex");
+  }
   let countdownInterval;
   let currentQuote = null;
   // Controle de envio dos e-mails da solicitação (zerado a cada abertura do modal)
@@ -473,6 +511,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ratesPapel = {};
       ratesCartao = {};
       lastFetchTime = new Date();
+      ratesUpdatedLabel =
+        parseSheetDateTime(rows[0]?.c?.[4]) || formatFetchTime(lastFetchTime);
 
       // Processa Papel Moeda (Colunas 7 e 8 - H e I)
       for (let i = 1; i <= 18; i++) {
@@ -617,6 +657,8 @@ document.addEventListener("DOMContentLoaded", () => {
         populateCurrencyList();
       }
 
+      updateRatesBadge(true);
+
       if (resultCard && !resultCard.classList.contains("hidden")) {
         console.log("🔄 Recalculando valores na tela com novas taxas...");
         updateDisplayConversion();
@@ -634,6 +676,7 @@ document.addEventListener("DOMContentLoaded", () => {
         dataStatus.className =
           "text-xs text-red-600 font-bold bg-red-50 px-3 py-1 rounded-full border border-red-200 flex items-center gap-1 animate-pulse";
         dataStatus.innerHTML = `<i class="ph-bold ph-warning-circle"></i> Sistema Indisponível`;
+        updateRatesBadge(false);
         dataStatus.classList.remove("hidden");
       }
       if (resultCard) resultCard.classList.add("hidden");
@@ -655,11 +698,7 @@ document.addEventListener("DOMContentLoaded", () => {
       UPDATE_INTERVAL_SECONDS - Math.floor((now - lastFetchTime) / 1000);
 
     if (lastUpdate)
-      lastUpdate.textContent = `${lastFetchTime.toLocaleDateString("pt-BR", {
-        timeZone: "America/Sao_Paulo",
-      })} às ${lastFetchTime.toLocaleTimeString("pt-BR", {
-        timeZone: "America/Sao_Paulo",
-      })}`;
+      lastUpdate.textContent = ratesUpdatedLabel || formatFetchTime(lastFetchTime);
 
     if (nextUpdate) {
       if (remaining <= 0) {
@@ -1335,13 +1374,10 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
 
   function renderQuoteTime(time) {
     if (!quoteTime) return;
-    quoteTime.innerHTML = `<i class="ph-bold ph-clock"></i> Cotação: ${time.toLocaleDateString(
-      "pt-BR",
-      { timeZone: "America/Sao_Paulo" },
-    )} às ${time.toLocaleTimeString("pt-BR", {
-      timeZone: "America/Sao_Paulo",
-    })}`;
+    // Mesma hora real da planilha usada no selo do topo
+    quoteTime.innerHTML = `<i class="ph-bold ph-clock"></i> Cotação atualizada em ${ratesUpdatedLabel || formatFetchTime(time)}`;
   }
+
 
   const SELL_NOTES_NOTICE =
     "Taxas válidas para <strong>cédulas de série atual</strong>. Cédulas de séries antigas, somente com o especialista pelo WhatsApp. Não compramos cédulas rabiscadas, manchadas ou rasgadas, nem moedas metálicas. As cédulas são entregues por você na <strong>loja parceira da M&A mais próxima do seu CEP</strong>.";
@@ -1860,6 +1896,10 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       );
     });
   }
+
+  // Busca as taxas assim que a página abre: o selo "Cotações atualizadas"
+  // aparece no topo e o contador de atualização automática começa a rodar.
+  fetchSheetRates();
 
   if (convertBtn) {
     convertBtn.onclick = async () => {
