@@ -216,13 +216,7 @@
   height: 72px;
   padding: 5px;
 }
-@media (max-width: 1023px) {
-  .logo-badge--hdr {
-    width: 64px;
-    height: 64px;
-    padding: 4px;
-  }
-}
+
 /* Botão "Voltar para o site" e selo de cotações: mesmo tamanho */
 .hdr-pill {
   align-items: center;
