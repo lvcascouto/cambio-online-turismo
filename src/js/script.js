@@ -146,6 +146,40 @@ document.addEventListener("DOMContentLoaded", () => {
     CAD: { min: 100, step: 5, notes: "5, 10, 20, 50 e 100" },
   };
 
+  // --- VENDA POR FAIXA DE VALOR ---
+  // A taxa de H22:I28 vale para vendas a partir de USD 500 / EUR 500
+  // (nas outras moedas, o equivalente a USD 500, calculado em reais).
+  // Abaixo disso vale a taxa da tabela "Cotação baixo de USD 500" (I33:I39).
+  // Linhas do gviz = linha da planilha − 2 (I33 → 31, I39 → 37).
+  // Se a coluna H tiver o código da moeda, a leitura usa o código; senão, a ordem de SELL_RATED.
+  // Taxa vazia ou zerada → abaixo do mínimo, a taxa é combinada no WhatsApp.
+  const SELL_TIER_MIN_USD = 500;
+  const SELL_LOW_SHEET_ROWS = { from: 31, to: 37 };
+  // Ordem de exibição na lista da venda (as mais procuradas primeiro)
+  const SELL_LIST_ORDER = ["USD", "EUR", "GBP", "CHF", "CAD", "AUD", "JPY"];
+  // Quantas moedas ficam visíveis no celular/tablet antes do "Ver todas as moedas"
+  const MOBILE_LIST_LIMIT = { venda: 3, default: 4 };
+
+  const CURRENCY_NAMES = {
+    USD: "Dólar Americano",
+    EUR: "Euro",
+    GBP: "Libra Esterlina",
+    CHF: "Franco Suíço",
+    CAD: "Dólar Canadense",
+    AUD: "Dólar Australiano",
+    JPY: "Iene Japonês",
+    NZD: "Dólar Neozelandês",
+    MXN: "Peso Mexicano",
+    CLP: "Peso Chileno",
+    UYU: "Peso Uruguaio",
+    CNY: "Iuan Chinês",
+    PEN: "Sol Peruano",
+    ARS: "Peso Argentino",
+    COP: "Peso Colombiano",
+    ZAR: "Rand Sul-Africano",
+    AED: "Dirham",
+  };
+
   // E-mails: compra e venda usam os MESMOS 2 templates do EmailJS (plano gratuito).
   // O template mostra a versão certa pelos blocos {{#is_sell}} / {{^is_sell}}.
 
@@ -291,6 +325,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let ratesCartao = {};
   let ratesVenda = {};
   let ratesDescarga = {};
+  let ratesVendaLow = {};
+  // Faixa da última simulação de venda (para destacar a taxa certa na lista)
+  let lastSellTier = { code: "", tier: "" };
+  // Lista de moedas expandida ("Ver todas as moedas")
+  let listExpanded = false;
+  // Depois da primeira simulação, mudar a quantidade recalcula sozinho
+  let autoRecalc = false;
   // currentMode: "papel" (comprar papel), "venda" (vender papel), "cartao" ou
   // "descarga" (vender o saldo integral do cartão M&A)
   // cardOp (só no cartão): "carga" (cartão novo) ou "recarga" (cartão M&A)
@@ -330,7 +371,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (ratesUpdatedAt)
-      ratesUpdatedAt.textContent = `Última atualização: ${ratesUpdatedLabel}`;
+      ratesUpdatedAt.textContent = ratesUpdatedLabel;
     ratesBadge.classList.remove("hidden");
     ratesBadge.classList.add("flex");
   }
@@ -647,6 +688,28 @@ document.addEventListener("DOMContentLoaded", () => {
         ratesVenda[code] = { raw: 0, display: "Consulta", isConsult: true };
       });
 
+      // Venda abaixo de USD 500 ou equivalente (Coluna I, linhas 33 a 39 da planilha)
+      ratesVendaLow = {};
+      for (let i = SELL_LOW_SHEET_ROWS.from; i <= SELL_LOW_SHEET_ROWS.to; i++) {
+        const r = rows[i];
+        if (!r) continue;
+        const codeInH = String(r.c[7]?.v ?? "").trim();
+        const code = SELL_RATED.includes(codeInH)
+          ? codeInH
+          : SELL_RATED[i - SELL_LOW_SHEET_ROWS.from];
+        if (!code) continue;
+        const valFormatted = r.c[8]?.f;
+        const value = valFormatted
+          ? Number(String(valFormatted).replace(",", "."))
+          : Number(r.c[8]?.v);
+        if (value > 0) {
+          ratesVendaLow[code] = {
+            raw: value,
+            display: valFormatted || String(r.c[8]?.v),
+          };
+        }
+      }
+
       if (dataStatus) {
         dataStatus.innerHTML = `<i class="ph-bold ph-check-circle"></i> Atualizado`;
         setTimeout(() => dataStatus.classList.add("hidden"), 1500);
@@ -702,13 +765,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (nextUpdate) {
       if (remaining <= 0) {
-        nextUpdate.textContent = "Atualizando...";
+        nextUpdate.textContent = "atualizando cotações...";
         clearInterval(countdownInterval);
         fetchSheetRates();
       } else {
         const m = Math.floor(remaining / 60);
         const s = remaining % 60;
-        nextUpdate.textContent = `${m}:${s.toString().padStart(2, "0")}`;
+        nextUpdate.textContent = `próxima atualização em ${m > 0 ? `${m} min ` : ""}${s.toString().padStart(2, "0")} s`;
       }
     }
   }
@@ -753,6 +816,38 @@ document.addEventListener("DOMContentLoaded", () => {
   //   };
   // }
 
+  // Mínimo da faixa na própria moeda: USD 500, EUR 500; nas outras, o
+  // equivalente a USD 500 em reais (pelas taxas de venda), arredondado para
+  // cima no passo das cédulas. Retorna null se faltar taxa para a conta.
+  function getSellTierMin(code) {
+    const rule = SELL_RULES[code];
+    if (!rule) return null;
+    if (code === "USD" || code === "EUR") return SELL_TIER_MIN_USD;
+    const usd = Number(ratesVenda.USD?.raw);
+    const rate = Number(ratesVenda[code]?.raw);
+    if (!(usd > 0 && rate > 0)) return null;
+    const units = (SELL_TIER_MIN_USD * usd) / rate;
+    const min = Math.ceil(units / rule.step - 1e-9) * rule.step;
+    return Math.max(min, rule.min);
+  }
+
+  // Faixa da venda: "low" (abaixo do mínimo) ou "high" (a partir do mínimo)
+  function getSellTier(code, amount) {
+    const min = getSellTierMin(code);
+    if (min === null) return { tier: "high", min: null, lowRate: null };
+    const low = ratesVendaLow[code];
+    return {
+      tier: amount < min ? "low" : "high",
+      min,
+      lowRate: low && low.raw > 0 ? low : null,
+    };
+  }
+
+  // Ex.: "GBP 400" / "JPY 75.000"
+  function formatTierMin(code, min) {
+    return `${code} ${Number(min).toLocaleString("pt-BR")}`;
+  }
+
   function calculateConversion(mode, currencyCode, amount) {
     const ratesObj = getRatesForMode(mode);
     const data = ratesObj[currencyCode];
@@ -765,7 +860,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // e o IOF é a diferença, para a conta sempre fechar no centavo.
     if (mode === "descarga" || mode === "venda") {
       const iofRate = mode === "venda" ? SELL_IOF_RATE : UNLOAD_IOF_RATE;
-      const VET = Number(data.raw);
+      // Venda: abaixo do mínimo da faixa usa a taxa de I33:I39
+      const tier = mode === "venda" ? getSellTier(currencyCode, amount) : null;
+      if (tier && tier.tier === "low" && !tier.lowRate) return null;
+      const VET = Number(
+        tier && tier.tier === "low" ? tier.lowRate.raw : data.raw,
+      );
       const totalBRL_cents = Math.round(amount * VET * 100);
       const baseRate = Number((VET / (1 - iofRate)).toFixed(4));
       const conversionBase_cents = Math.round(amount * baseRate * 100);
@@ -783,6 +883,9 @@ document.addEventListener("DOMContentLoaded", () => {
         totalBRL: totalBRL_cents / 100,
         VET: VET,
         rateDisplay: data.display,
+        sellTier: tier ? tier.tier : null,
+        sellTierMin: tier ? tier.min : null,
+        sellHighVET: tier ? Number(data.raw) : null,
         time: lastFetchTime || new Date(),
       };
     }
@@ -1061,11 +1164,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (opCard) opCard.classList.toggle("hidden", !cardMenuOpen);
     if (opBackBtn) opBackBtn.classList.toggle("hidden", !cardMenuOpen);
     if (opTitle)
-      opTitle.textContent = cardMenuOpen ? "Cartão Pré-pago" : "Operação";
+      opTitle.textContent = "1. Operação";
     if (opSubtitle)
       opSubtitle.textContent = cardMenuOpen
-        ? "Selecione o tipo da sua operação"
-        : "Selecione o tipo da sua operação entre Papel-Espécie ou Cartão Pré-pago (carga, recarga ou descarga)";
+        ? "Cartão pré-pago: escolha carga, recarga ou descarga"
+        : "Escolha papel espécie ou cartão pré-pago";
   }
 
   function updateCurrencyListHint() {
@@ -1073,7 +1176,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const hints = {
       papel: "Selecione a moeda estrangeira que deseja comprar em espécie",
       venda:
-        "Valor que a M&A paga por unidade (taxas válidas para cédulas de série atual)",
+        "Quanto a M&A paga por unidade. Em outras moedas, vale o equivalente a USD 500.",
       carga: "Selecione a moeda da carga do seu cartão novo da M&A",
       recarga: "Selecione a moeda da recarga do seu cartão M&A",
       descarga: "Valor que a M&A paga por unidade do saldo do seu cartão M&A",
@@ -1084,6 +1187,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setModeUI(mode) {
+    if (currentMode !== mode) listExpanded = false;
     currentMode = mode;
     available = getRatesForMode(mode);
 
@@ -1103,10 +1207,13 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       resultCard.classList.add("hidden");
       comparisonGrid.innerHTML = "";
+      currentQuote = null;
       restoreBuyBtn();
+      hideSellTierBar();
     }
     // Comparativo não se aplica à descarga
     getEl("comparisonSection")?.classList.toggle("hidden", mode === "descarga");
+    refreshFlowUI();
   }
 
   function restoreBuyBtn() {
@@ -1155,60 +1262,177 @@ document.addEventListener("DOMContentLoaded", () => {
       renderOperationMenu();
     };
 
+  // Moeda sem taxa no site para a operação atual ("Consulta" / WhatsApp)
+  function isNoRateItem(code) {
+    if (currentMode === "venda" || currentMode === "descarga")
+      return isSellConsult(code);
+    return !(Number(available[code]?.raw) > 0);
+  }
+
+  // Ao clicar numa moeda da lista
+  function selectCurrency(code) {
+    fromSel.value = code;
+    highlightSelectedCurrency(code);
+    updateInputHelper();
+    if (amountInput.value > 0) {
+      updateDisplayConversion();
+    } else {
+      resultCard.classList.add("hidden");
+      refreshFlowUI();
+    }
+  }
+
+  // Lista de moedas.
+  //  - Celular/tablet (uma coluna, < 1024 px): só as primeiras moedas; o resto
+  //    abre em "Ver todas as moedas". A moeda selecionada fica sempre visível.
+  //  - Computador: todas as moedas com taxa; só as sem taxa (WhatsApp) ficam
+  //    recolhidas em "Ver todas as moedas".
+  //  - Venda: tabela com a taxa a partir de USD 500 e a taxa abaixo de USD 500.
   function populateCurrencyList() {
     currencyList.innerHTML = "";
-    Object.keys(available).forEach((code) => {
+    const isSellList = currentMode === "venda";
+    currencyList.className = isSellList
+      ? "grid grid-cols-1 gap-2 pb-1"
+      : "grid grid-cols-2 gap-3 pb-1";
+
+    let codes = Object.keys(available);
+    if (isSellList) {
+      codes = [
+        ...SELL_LIST_ORDER.filter((c) => available[c] && !isNoRateItem(c)),
+        ...codes.filter(
+          (c) => !SELL_LIST_ORDER.includes(c) || isNoRateItem(c),
+        ),
+      ];
+    }
+    const mobileLimit = isSellList
+      ? MOBILE_LIST_LIMIT.venda
+      : MOBILE_LIST_LIMIT.default;
+    const selected = fromSel.value;
+    const display = isSellList ? "lg:grid" : "lg:flex";
+    let hiddenMobile = 0;
+    let hiddenDesktop = 0;
+
+    if (isSellList) {
+      const lowActive =
+        lastSellTier.tier === "low" && lastSellTier.code === selected;
+      currencyList.insertAdjacentHTML(
+        "beforeend",
+        `<div class="sell-list-head">
+          <span></span>
+          <span class="${lowActive ? "" : "is-active"}">A partir de<br>USD 500</span>
+          <span class="${lowActive ? "is-active" : ""}">Abaixo de<br>USD 500</span>
+        </div>`,
+      );
+    }
+
+    codes.forEach((code, index) => {
       const btn = document.createElement("button");
-      const isSelected = fromSel.value === code;
+      btn.type = "button";
+      btn.dataset.code = code;
+      const isSelected = selected === code;
+      const noRate = isNoRateItem(code);
       const isExoticDisplay =
         currentMode === "papel" && PAPER_RULES[code]?.isExotic;
       const isConsultDisplay = isSellConsult(code);
 
-      // Valor da taxa
-      const rateValue = `R$ ${formatRate(available[code].raw)}`;
-
-      let rateDisplay;
-      if (isConsultDisplay) {
-        // Venda sem taxa no simulador: só a tag "Sob Consulta"
-        rateDisplay = `<span class="text-[9px] uppercase tracking-wide text-red-400 bg-red-50 px-1.5 py-0.5 rounded">Sob Consulta</span>`;
-      } else if (isExoticDisplay) {
-        // Exótica (compra): taxa em vermelho + "Sob Consulta"
-        rateDisplay = `<div class="flex flex-col items-start">
-             <span class="text-red-500 font-bold">${rateValue}</span>
-             <span class="text-[9px] uppercase tracking-wide text-red-400 bg-red-50 px-1.5 py-0.5 rounded mt-0.5">Sob Consulta</span>
-           </div>`;
-      } else {
-        rateDisplay = `<span class="text-gray-500">${rateValue}</span>`;
+      // Visibilidade (recolhida até "Ver todas as moedas")
+      let visibility = "";
+      if (!listExpanded && !isSelected) {
+        if (noRate) {
+          visibility = "hidden";
+          hiddenMobile++;
+          hiddenDesktop++;
+        } else if (index >= mobileLimit) {
+          visibility = `hidden ${display}`;
+          hiddenMobile++;
+        }
       }
 
-      btn.className = `text-left p-3 rounded-lg border transition-all h-full flex flex-col justify-center ${
-        isSelected
-          ? "border-[#d6c07a] bg-[#fffdf5] ring-2 ring-[#d6c07a]/20"
-          : "border-gray-200 bg-white hover:bg-gray-50"
-      }`;
+      const stateClass = isSelected
+        ? "border-[#d6c07a] bg-[#fffdf5] ring-2 ring-[#d6c07a]/20"
+        : "border-gray-200 bg-white hover:bg-gray-50";
 
-      btn.innerHTML = `
-        <div class="text-sm font-medium flex items-center text-gray-800 mb-1">
-          ${getFlagElement(code)} ${code}
-        </div>
-        <div class="text-xs mt-auto">
-          ${rateDisplay}
-        </div>`;
-
-      btn.onclick = () => {
-        fromSel.value = code;
-        highlightSelectedCurrency(code);
-        updateInputHelper();
-
-        if (amountInput.value > 0) {
-          updateDisplayConversion();
+      if (isSellList) {
+        const name = CURRENCY_NAMES[code] || "";
+        let rates;
+        if (noRate) {
+          rates = `<span class="col-span-2 text-right text-xs font-bold text-green-700">Taxa no WhatsApp</span>`;
         } else {
-          resultCard.classList.add("hidden");
+          const low = ratesVendaLow[code];
+          const lowActive =
+            isSelected &&
+            lastSellTier.code === code &&
+            lastSellTier.tier === "low";
+          const highText = `R$ ${formatRate(available[code].raw)}`;
+          const lowText =
+            low && low.raw > 0
+              ? `R$ ${formatRate(low.raw)}`
+              : `<span class="text-green-700 font-bold text-xs">WhatsApp</span>`;
+          rates = `
+            <span class="sell-rate${lowActive ? "" : " is-active"}">${highText}</span>
+            <span class="sell-rate${lowActive ? " is-active" : ""}">${lowText}</span>`;
         }
-      };
+        btn.className = `sell-row ${visibility} text-left p-3 rounded-lg border transition-all items-center gap-2 ${stateClass}`;
+        if (!visibility) btn.classList.add("grid");
+        btn.innerHTML = `
+          <span class="flex items-center gap-2 min-w-0">
+            ${getFlagElement(code)}
+            <span class="min-w-0"><span class="block text-sm font-semibold text-gray-800 leading-tight">${code}</span><span class="sell-name block text-[11px] text-gray-500 leading-tight">${name}</span></span>
+          </span>${rates}`;
+      } else {
+        // Valor da taxa
+        const rateValue = `R$ ${formatRate(available[code].raw)}`;
+        let rateDisplay;
+        if (isConsultDisplay || noRate) {
+          rateDisplay = `<span class="text-[9px] uppercase tracking-wide text-red-400 bg-red-50 px-1.5 py-0.5 rounded">Sob Consulta</span>`;
+        } else if (isExoticDisplay) {
+          // Exótica (compra): taxa em vermelho + "Sob Consulta"
+          rateDisplay = `<div class="flex flex-col items-start">
+               <span class="text-red-500 font-bold">${rateValue}</span>
+               <span class="text-[9px] uppercase tracking-wide text-red-400 bg-red-50 px-1.5 py-0.5 rounded mt-0.5">Sob Consulta</span>
+             </div>`;
+        } else {
+          rateDisplay = `<span class="text-gray-500">${rateValue}</span>`;
+        }
+        btn.className = `${visibility} text-left p-3 rounded-lg border transition-all h-full flex-col justify-center ${stateClass}`;
+        if (!visibility) btn.classList.add("flex");
+        btn.innerHTML = `
+          <div class="text-sm font-medium flex items-center text-gray-800 mb-1">
+            ${getFlagElement(code)} ${code}
+          </div>
+          <div class="text-xs">
+            ${rateDisplay}
+          </div>`;
+      }
+
+      btn.onclick = () => selectCurrency(code);
       currencyList.appendChild(btn);
     });
-    highlightSelectedCurrency(fromSel.value);
+
+    renderListToggle(hiddenMobile, hiddenDesktop);
+    const note = getEl("currencyListNote");
+    if (note) note.classList.toggle("hidden", !isSellList);
+  }
+
+  // Botão "Ver todas as moedas" / "Mostrar menos"
+  function renderListToggle(hiddenMobile, hiddenDesktop) {
+    const btn = getEl("currencyMoreBtn");
+    if (!btn) return;
+    const consultCount = Object.keys(available).filter(isNoRateItem).length;
+    if (listExpanded) {
+      btn.className = "list-more-btn";
+      btn.innerHTML = `Mostrar menos <i class="ph-bold ph-caret-up"></i>`;
+    } else if (hiddenMobile === 0) {
+      btn.className = "hidden";
+    } else {
+      // No computador o botão só aparece se houver moedas sem taxa recolhidas
+      btn.className = `list-more-btn${hiddenDesktop ? "" : " desk-hide"}`;
+      btn.innerHTML = `<span class="lg:hidden">Ver todas as moedas</span><span class="hidden lg:inline">Ver todas as moedas (+${consultCount} com taxa no WhatsApp)</span> <i class="ph-bold ph-caret-down"></i>`;
+    }
+    btn.onclick = () => {
+      listExpanded = !listExpanded;
+      populateCurrencyList();
+    };
   }
 
   function highlightSelectedCurrency(code) {
@@ -1220,13 +1444,14 @@ document.addEventListener("DOMContentLoaded", () => {
         "ring-[#d6c07a]/20",
       );
       btn.classList.add("border-gray-200", "bg-white");
-      if (code && btn.textContent.includes(code)) {
-        btn.classList.remove("border-gray-200", "bg-white");
+      if (code && btn.dataset.code === code) {
+        btn.classList.remove("border-gray-200", "bg-white", "hidden");
         btn.classList.add(
           "border-[#d6c07a]",
           "bg-[#fffdf5]",
           "ring-2",
           "ring-[#d6c07a]/20",
+          btn.classList.contains("sell-row") ? "grid" : "flex",
         );
       }
     });
@@ -1256,6 +1481,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (amountInput.value > 0) {
         updateDisplayConversion();
+      } else {
+        refreshFlowUI();
       }
     };
   }
@@ -1323,6 +1550,19 @@ document.addEventListener("DOMContentLoaded", () => {
       gray: ["bg-gray-50 border-gray-200", "text-gray-800", "text-gray-600"],
     };
     const [box, titleColor, textColor] = tones[tone] || tones.yellow;
+    // Aviso informativo (cinza): recolhido para não poluir o resultado
+    if (tone === "gray") {
+      calcDetails.insertAdjacentHTML(
+        "afterbegin",
+        `<details class="result-notice exotic-warning mb-4 border rounded-lg ${box}">
+          <summary class="flex items-center gap-2 px-3 py-2.5 text-sm font-bold ${titleColor} cursor-pointer select-none">
+            <i class="ph-bold ph-info text-lg"></i><span class="flex-1">${title}</span><i class="ph-bold ph-caret-down notice-caret"></i>
+          </summary>
+          <p class="text-xs ${textColor} px-3 pb-3 leading-relaxed">${text}</p>
+        </details>`,
+      );
+      return;
+    }
     calcDetails.insertAdjacentHTML(
       "afterbegin",
       `<div class="exotic-warning mb-4 p-3 border rounded-lg ${box}">
@@ -1375,7 +1615,7 @@ Gostaria de confirmar a taxa exata e a disponibilidade para fechar a operação.
   function renderQuoteTime(time) {
     if (!quoteTime) return;
     // Mesma hora real da planilha usada no selo do topo
-    quoteTime.innerHTML = `<i class="ph-bold ph-clock"></i> Cotação atualizada em ${ratesUpdatedLabel || formatFetchTime(time)}`;
+    quoteTime.innerHTML = `<i class="ph-bold ph-clock"></i> Cotação de ${ratesUpdatedLabel || formatFetchTime(time)}`;
   }
 
 
@@ -1601,11 +1841,89 @@ ${valueLines}
 
     if (!currentMode || !from || !amount || amount <= 0) {
       resultCard.classList.add("hidden");
+      currentQuote = null;
+      refreshFlowUI();
       return;
     }
 
     // Restaura botão padrão e remove avisos antes de tudo
     restoreBuyBtn();
+    hideSellTierBar();
+    try {
+      renderConversion(from, amount);
+      if (!resultCard.classList.contains("hidden")) autoRecalc = true;
+    } finally {
+      refreshFlowUI();
+    }
+  }
+
+  // Faixa da venda: indicadores acima do resultado + aviso
+  function hideSellTierBar() {
+    const bar = getEl("sellTierBar");
+    if (bar) {
+      bar.classList.add("hidden");
+      bar.innerHTML = "";
+    }
+    if (currentMode !== "venda") lastSellTier = { code: "", tier: "" };
+  }
+
+  function renderSellTierBar(code, amount, tier, highVET) {
+    const bar = getEl("sellTierBar");
+    if (!bar || tier.min === null) return;
+    const minText = formatTierMin(code, tier.min);
+    const pill = (label, active) =>
+      `<div class="tier-pill${active ? " is-active" : ""}">${label}</div>`;
+    let notice;
+    if (tier.tier === "low" && tier.lowRate) {
+      const missing = (tier.min - amount).toLocaleString("pt-BR");
+      notice = `<div class="mt-3 p-3 rounded-lg border bg-green-50 border-green-200 text-green-800 text-xs sm:text-sm leading-relaxed">💡 Vendendo a partir de <strong>${minText}</strong>, a taxa sobe para <strong>R$ ${formatRate(highVET)}</strong>. Faltam <strong>${code} ${missing}</strong>.</div>`;
+    } else if (tier.tier === "low") {
+      notice = `<div class="mt-3 p-3 rounded-lg border bg-yellow-50 border-yellow-200 text-yellow-800 text-xs sm:text-sm leading-relaxed">Para vendas abaixo de <strong>${minText}</strong>, a taxa é combinada com nosso especialista.</div>`;
+    } else {
+      notice = `<div class="mt-3 p-3 rounded-lg border bg-blue-50 border-blue-100 text-blue-800 text-xs sm:text-sm leading-relaxed">✔ Você está na melhor faixa de taxa.</div>`;
+    }
+    bar.innerHTML = `
+      <div class="grid grid-cols-2 gap-2">
+        ${pill(`Abaixo de ${minText}`, tier.tier === "low")}
+        ${pill(`A partir de ${minText}`, tier.tier === "high")}
+      </div>${notice}`;
+    bar.classList.remove("hidden");
+  }
+
+  // Venda abaixo do mínimo sem taxa na planilha (I33:I39 vazia): WhatsApp
+  function renderSellTierConsult(currencyCode, amount, tier) {
+    currentQuote = null;
+    resultCard.classList.remove("hidden");
+    resultCard.classList.add("fade-in");
+    if (resultLabel) resultLabel.textContent = "Valor Total a Receber";
+    resultValue.textContent = "Sob consulta";
+    renderQuoteTime(lastFetchTime || new Date());
+    renderSellTierBar(currencyCode, amount, tier, null);
+    calcDetails.innerHTML = `
+      <div class="flex justify-between text-sm border-b pb-2 mb-2">
+        <span class="text-gray-600">Quantidade</span>
+        <span class="font-mono">${formatAmount(amount)} ${currencyCode}</span>
+      </div>
+      <div class="flex justify-between text-sm pt-1">
+        <span class="text-gray-600">Taxa VET Unitária</span>
+        <span class="font-mono font-bold text-[#d6c07a]">Sob consulta</span>
+      </div>`;
+    updateComparison(currencyCode, amount);
+    setActionButton({
+      label: "Consultar taxa no WhatsApp",
+      style: "whatsapp",
+      onClick: () => {
+        const msg = `Olá, M&A Consultoria Câmbio! 😊
+
+Quero vender *${formatAmount(amount)} ${currencyCode}* em espécie. Pode me passar a taxa?
+
+• *Faixa:* abaixo de ${formatTierMin(currencyCode, tier.min)}`;
+        sendToWhatsAppAndReset(msg);
+      },
+    });
+  }
+
+  function renderConversion(from, amount) {
 
     // 1. Validações por operação
     const validations = [
@@ -1635,6 +1953,16 @@ ${valueLines}
       return;
     }
 
+    // Venda por faixa: abaixo do mínimo e sem taxa na planilha → WhatsApp
+    if (currentMode === "venda") {
+      const tier = getSellTier(from, amount);
+      lastSellTier = { code: from, tier: tier.tier };
+      if (tier.tier === "low" && !tier.lowRate) {
+        renderSellTierConsult(from, amount, tier);
+        return;
+      }
+    }
+
     // 3. Cálculo
     const res = calculateConversion(currentMode, from, amount);
 
@@ -1660,6 +1988,13 @@ ${valueLines}
       if (res.isSell) {
         calcDetails.innerHTML = renderSellBreakdown(res, "Quantidade");
         insertResultNotice("Atenção às cédulas", SELL_NOTES_NOTICE, "gray");
+        if (currentMode === "venda")
+          renderSellTierBar(
+            from,
+            amount,
+            getSellTier(from, amount),
+            res.sellHighVET,
+          );
       } else {
         const iofPct = (res.iofRate * 100).toFixed(2).replace(".", ",");
         calcDetails.innerHTML = `
@@ -1696,7 +2031,7 @@ ${valueLines}
       displayExoticWarning(from, amount, res);
     } else if (currentMode === "venda") {
       setActionButton({
-        label: "Solicitar Venda",
+        label: "4. Solicitar Venda",
         style: "gold",
         onClick: openModal,
       });
@@ -1739,7 +2074,9 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     } else {
       setActionButton({
         label:
-          currentMode === "cartao" ? "Solicitar Cartão" : "Solicitar Câmbio",
+          currentMode === "cartao"
+            ? "4. Solicitar Cartão"
+            : "4. Solicitar Câmbio",
         style: "gold",
         onClick: openModal,
       });
@@ -1844,7 +2181,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
               : [],
           unavailableText: sellConsult
             ? "Cotação sob consulta no WhatsApp"
-            : null,
+            : "Taxa combinada no WhatsApp para este valor",
         }),
       );
       return;
@@ -1897,6 +2234,77 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     });
   }
 
+  // --- INDICADOR DE ETAPAS (1 Operação · 2 Moeda e valor · 3 Resultado · 4 Solicitar) ---
+  function updateSteps() {
+    const items = document.querySelectorAll("#stepsBar [data-step]");
+    if (!items.length) return;
+    const amount = parseFloat(amountInput?.value);
+    const done1 = !!currentMode;
+    const done2 = done1 && !!fromSel.value && amount > 0;
+    const done3 =
+      done2 &&
+      resultCard &&
+      !resultCard.classList.contains("hidden") &&
+      !!getEl("buyBtn");
+    const done = [done1, done2, done3, false];
+    const current = done.indexOf(false);
+    items.forEach((el, i) => {
+      el.classList.toggle("is-done", done[i]);
+      el.classList.toggle("is-current", i === current);
+      const dot = el.querySelector(".step-dot");
+      if (dot) dot.textContent = done[i] ? "✓" : `${i + 1}`;
+    });
+  }
+
+  // --- BARRA FIXA NO RODAPÉ (celular e tablet, layout de uma coluna) ---
+  function updateStickyBar() {
+    const bar = getEl("stickyBar");
+    if (!bar) return;
+    const modalOpen = budgetModal && !budgetModal.classList.contains("hidden");
+    const show =
+      !!currentQuote &&
+      resultCard &&
+      !resultCard.classList.contains("hidden") &&
+      !modalOpen;
+    bar.classList.toggle("hidden", !show);
+    bar.classList.toggle("flex", show);
+    document.body.classList.toggle("has-sticky", show);
+    if (!show) return;
+    getEl("stickyLabel").textContent = currentQuote.isSell
+      ? "Total a receber"
+      : "Total a pagar";
+    getEl("stickyValue").textContent = formatBRL(currentQuote.totalBRL);
+  }
+
+  const stickyBtn = getEl("stickyBtn");
+  if (stickyBtn)
+    stickyBtn.onclick = (e) => {
+      e.preventDefault();
+      const btn = getEl("buyBtn");
+      if (btn) btn.click();
+    };
+
+  // Atualiza tudo que depende do estado do simulador
+  function refreshFlowUI() {
+    if (currentMode) populateCurrencyList();
+    updateSteps();
+    updateStickyBar();
+  }
+
+  // Depois da primeira simulação, mudar a quantidade recalcula sozinho
+  let recalcTimer;
+  if (amountInput)
+    amountInput.addEventListener("input", () => {
+      clearTimeout(recalcTimer);
+      recalcTimer = setTimeout(() => {
+        if (autoRecalc && currentMode && fromSel.value) {
+          updateDisplayConversion();
+        } else {
+          updateSteps();
+        }
+      }, 600);
+    });
+
   // Busca as taxas assim que a página abre: o selo "Cotações atualizadas"
   // aparece no topo e o contador de atualização automática começa a rodar.
   fetchSheetRates();
@@ -1912,6 +2320,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       convertBtn.disabled = !0;
 
       await fetchSheetRates();
+      autoRecalc = true;
       updateDisplayConversion();
 
       convertBtn.innerText = originalText;
@@ -2161,7 +2570,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
 
     if (operationalInfo) {
       const items = OPERATIONAL_INFO[q.mode] || OPERATIONAL_INFO.papel;
-      operationalInfo.innerHTML = `<div class="bg-gray-100 p-4 rounded-xl border border-gray-200 text-xs text-gray-600 space-y-2 text-justify">
+      operationalInfo.innerHTML = `<div class="bg-gray-100 p-4 rounded-xl border border-gray-200 text-xs text-gray-600 space-y-2 text-left sm:text-justify">
       <p class="font-bold text-gray-700 mb-1 flex items-center gap-1"><i class="ph-bold ph-info"></i> Informações Importantes:</p>
       ${items.map((t, i) => `<p>${i + 1}. ${t}</p>`).join("")}
     </div>`;
@@ -2210,10 +2619,12 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     if (budgetForm) budgetForm.classList.remove("hidden");
     if (successStep) successStep.classList.add("hidden");
     if (budgetModal) budgetModal.classList.remove("hidden");
+    updateStickyBar();
   }
 
   function closeModal() {
     budgetModal.classList.add("hidden");
+    updateStickyBar();
   }
 
   if (buyBtn)
@@ -2415,6 +2826,11 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
         `• *Cotação turismo:* R$ ${formatRate(q.cotaçãoBase)}`,
         `• *IOF (${(q.iofRate * 100).toFixed(2).replace(".", ",")}%):* − ${formatBRL(q.totalIOFValue)}`,
         `• *VET Final:* R$ ${formatRate(q.VET)}`,
+        ...(q.sellTierMin
+          ? [
+              `• *Faixa:* ${q.sellTier === "low" ? "abaixo de" : "a partir de"} ${formatTierMin(q.currencyCode, q.sellTierMin)}`,
+            ]
+          : []),
         `• *Recebimento:* ${info.method === "Espécie" ? info.details : `${info.method} — ${info.details}`}`,
         `• *Entrega das cédulas:* na loja mais próxima do meu CEP *${clientCep}*`,
         ``,

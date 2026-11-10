@@ -209,3 +209,256 @@
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
 }
+
+/* --- Novo layout (cabeçalho compacto, etapas, lista, faixa da venda, barra fixa) --- */
+.logo-badge--hdr {
+  width: 72px;
+  height: 72px;
+  padding: 5px;
+}
+@media (max-width: 1023px) {
+  .logo-badge--hdr {
+    width: 64px;
+    height: 64px;
+    padding: 4px;
+  }
+}
+/* Botão "Voltar para o site" e selo de cotações: mesmo tamanho */
+.hdr-pill {
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding: 0 0.875rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  line-height: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.steps-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #9ca3af;
+}
+.step-dot {
+  width: 1.625rem;
+  height: 1.625rem;
+  flex: none;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: #f1f1ee;
+  color: #9ca3af;
+}
+.step.is-done,
+.step.is-current {
+  color: #1f2937;
+}
+.step.is-done .step-dot {
+  background: #1d1d1d;
+  color: #d6c07a;
+}
+.step.is-current .step-dot {
+  background: #d6c07a;
+  color: #1d1d1d;
+}
+.step-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 639px) {
+  .steps-bar {
+    padding: 0.625rem 0.5rem;
+    gap: 0.25rem;
+  }
+  .step {
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+    font-size: 0.6875rem;
+  }
+  .step-label {
+    white-space: normal;
+    line-height: 1.15;
+  }
+}
+.list-more-btn {
+  margin-top: 0.75rem;
+  width: 100%;
+  height: 2.75rem;
+  border: 1px dashed #cfcac0;
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #6b5a26;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+.list-more-btn:hover {
+  border-color: #d6c07a;
+  background: #fffdf5;
+}
+.sell-list-head,
+.sell-row {
+  grid-template-columns: minmax(0, 1fr) 4.75rem 4.75rem;
+}
+.sell-list-head {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 0.75rem 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: right;
+  line-height: 1.25;
+  color: #9ca3af;
+}
+.sell-list-head .is-active {
+  color: #9a7f2c;
+}
+.sell-rate {
+  text-align: right;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.sell-rate.is-active {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #9a7f2c;
+}
+.tier-pill {
+  min-height: 2.5rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px dashed #cfcac0;
+  border-radius: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+  background: #fff;
+}
+.tier-pill.is-active {
+  border-style: solid;
+  border-color: #d6c07a;
+  background: #fffdf5;
+  color: #6b5a26;
+  box-shadow: 0 0 0 2px rgb(214 192 122 / 0.2);
+}
+.sticky-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem calc(0.625rem + env(safe-area-inset-bottom));
+  background: #1d1d1d;
+  border-top: 3px solid #d6c07a;
+  box-shadow: 0 -8px 20px rgb(0 0 0 / 0.15);
+}
+@media (max-width: 1023px) {
+  body.has-sticky {
+    padding-bottom: 4.75rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .list-more-btn.desk-hide {
+    display: none;
+  }
+}
+
+/* Nome da moeda na lista da venda: uma linha só */
+.sell-row .sell-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Aviso recolhível no resultado (ex.: "Atenção às cédulas") */
+.result-notice summary {
+  list-style: none;
+}
+.result-notice summary::-webkit-details-marker {
+  display: none;
+}
+.result-notice .notice-caret {
+  transition: transform 0.2s ease;
+}
+.result-notice[open] .notice-caret {
+  transform: rotate(180deg);
+}
+/* Cards de diferenciais: compactos no celular (ícone à esquerda) */
+.feature-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.875rem;
+  row-gap: 0.125rem;
+  align-items: start;
+  text-align: left;
+}
+.feature-card .feature-icon {
+  grid-row: span 2;
+}
+.feature-card .feature-title {
+  font-size: 0.9375rem;
+}
+.feature-card .feature-text {
+  font-size: 0.8125rem;
+}
+@media (min-width: 768px) {
+  .feature-card {
+    display: block;
+    text-align: center;
+  }
+  .feature-card .feature-icon {
+    margin: 0 auto 1rem;
+  }
+  .feature-card .feature-title {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .feature-card .feature-text {
+    font-size: 0.875rem;
+  }
+}
+
+/* Subtítulo dos botões de operação em uma linha (ex.: "Pré-pago") */
+.op-btn-sub {
+  white-space: nowrap;
+}
+
+/* Valores do resumo sempre em uma linha (ex.: "200,00 USD") */
+#calcDetails .font-mono {
+  white-space: nowrap;
+}
+/* Telas bem estreitas: lista da venda só com o código da moeda */
+@media (max-width: 399px) {
+  .sell-row .sell-name {
+    display: none;
+  }
+}

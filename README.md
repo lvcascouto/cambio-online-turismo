@@ -47,15 +47,11 @@ A aplicação funciona em uma arquitetura **client-side, sem frameworks JavaScri
 
 🌐 [Acesse a plataforma](https://cotacaoonline.maconsultoriacambio.com.br/)
 
-<p align="center">
-  <img src="assets/img/print.png" alt="Preview do Sistema" width="100%"/>
-</p>
-
 ## FUNCIONALIDADES
 
 ### 🧭 Operações disponíveis
 
-O cliente escolhe a operação no card **Operação**:
+O cliente segue quatro etapas, indicadas na faixa de progresso logo abaixo do cabeçalho e repetidas nos títulos dos cards: **1. Operação · 2. Moeda · 3. Simulação · 4. Solicitação**. A operação é escolhida no card **1. Operação**:
 
 | Operação              | O que é                                       | Como é finalizada                                 |
 | --------------------- | --------------------------------------------- | ------------------------------------------------- |
@@ -75,7 +71,9 @@ Moedas exóticas na compra e moedas sem taxa na venda são tratadas como **sob c
 - Aplicação de IOF e cálculo de VET na compra;
 - Exibição do total a pagar (compra) ou do valor a receber (venda e descarga);
 - Comparativo entre **Papel × Cartão** na compra e entre **compra × venda** da mesma moeda na venda;
-- Atualização automática das taxas em intervalos definidos, com recálculo da simulação na tela.
+- Venda de papel espécie com **taxa por faixa de valor** (a partir de / abaixo de USD 500 ou equivalente);
+- Depois da primeira simulação, alterar a quantidade recalcula o resultado sozinho;
+- Atualização automática das taxas em intervalos definidos, com recálculo da simulação na tela e contagem para a próxima atualização no resultado.
 
 ### 🧠 Regras de negócio
 
@@ -89,6 +87,10 @@ A aplicação implementa regras específicas para controlar o comportamento de c
 **Venda de papel espécie**
 
 - Taxas na plataforma para USD, EUR, JPY, GBP, CHF, AUD e CAD; demais moedas sob consulta;
+- **Taxa por faixa:** a taxa de H22:I28 vale para vendas a partir de USD 500 ou EUR 500. Nas outras moedas, o mínimo é o equivalente a USD 500, calculado pelas taxas de venda (`500 × taxa USD ÷ taxa da moeda`) e arredondado para cima no passo das cédulas (ex.: GBP 395, JPY 89.000). Abaixo do mínimo vale a taxa da tabela "Cotação baixo de USD 500 ou equivalente" (I33:I39). O cliente vê sempre o mínimo na própria moeda, nunca "equivalente";
+- O simulador mostra a faixa aplicada, quanto falta para a melhor taxa e, na lista de moedas, as duas taxas lado a lado (com destaque na taxa que vale para a quantidade digitada);
+- Se a taxa de I33:I39 estiver vazia ou zerada, a venda abaixo do mínimo segue para o WhatsApp com mensagem pronta; a partir do mínimo, o fluxo é normal;
+- A mensagem de WhatsApp da venda informa a faixa da taxa;
 - Valor mínimo por moeda e quantidade em múltiplos da menor cédula aceita (sem moedas metálicas);
 - Taxas válidas para cédulas de série atual; cédulas rabiscadas, manchadas ou rasgadas não são aceitas;
 - Entrega das cédulas pelo cliente na loja mais próxima do seu CEP;
@@ -137,6 +139,11 @@ Compra e venda utilizam os mesmos templates do EmailJS. O conteúdo de cada e-ma
 
 - Interface responsiva;
 - Layout adaptado para desktop, tablet e mobile;
+- Cabeçalho com logo, título e selo de cotações atualizadas alinhados à faixa de progresso; no celular e tablet tudo fica centralizado e empilhado, com o botão "Voltar para o site" (que vira "Site" em telas pequenas) no topo direito;
+- Faixa de progresso com as etapas 1. Operação · 2. Moeda · 3. Simulação · 4. Solicitação, refletindo o estado real do formulário;
+- Lista de moedas recolhível ("Ver todas as moedas"): no celular e tablet aparecem só as primeiras; no computador só as moedas sem taxa (WhatsApp) ficam recolhidas. A moeda selecionada fica sempre visível;
+- Barra fixa no rodapé em telas de uma coluna (abaixo de 1024 px), com o total da simulação e o botão "Solicitar"; some com o formulário aberto;
+- Avisos informativos do resultado recolhíveis, para não tirar o foco do valor;
 - Menu de operações com submenu dedicado ao cartão pré-pago;
 - Fluxo simplificado de simulação;
 - Feedback visual para diferentes estados da aplicação;
@@ -162,6 +169,7 @@ JavaScript
      │
      ├── Regras de negócio por operação
      ├── IOF / VET
+     ├── Faixa da venda (a partir de / abaixo de USD 500)
      ├── Mínimos e cédulas
      ├── Delivery
      ├── Horários e feriados
@@ -187,6 +195,7 @@ O **Google Sheets** é utilizado como fonte de dados operacional para as taxas d
 | Compra de papel espécie           | Colunas H e I       |
 | Cartão pré-pago (carga e recarga) | Colunas J e K       |
 | Venda de papel espécie            | H22:I28             |
+| Venda abaixo de USD 500           | H33:I39             |
 | Descarga de cartão                | K22:K30             |
 
 A escolha permite que a equipe responsável atualize as cotações sem necessidade de alterar o código da aplicação. Como a leitura usa posições definidas da planilha, qualquer nova linha ou coluna nessas áreas deve ser acompanhada da atualização correspondente no JavaScript.
@@ -205,6 +214,7 @@ Entre os controles implementados estão:
 
 - Verificação da disponibilidade da fonte de dados;
 - Moedas sem taxa válida na planilha tratadas como sob consulta, sem cálculo;
+- Na venda, taxa da faixa abaixo de USD 500 vazia ou zerada leva ao WhatsApp, sem exibir valor;
 - Bloqueio do fluxo quando informações críticas não estão disponíveis;
 - Confirmação da solicitação somente após o envio dos e-mails, com nova tentativa sem duplicidade;
 - Tratamento de erros de comunicação;
@@ -260,6 +270,14 @@ cambio-online-turismo/
 ├── LICENSE                  → Licença do projeto
 └── README.md
 ```
+
+Após alterar os arquivos de `src/`, gere novamente os arquivos de produção usados pelo `index.html`:
+
+```bash
+npx terser src/js/script.js -c -m --comments false -o dist/script.min.js
+```
+
+O `dist/style.min.css` deve receber a versão minificada das regras alteradas em `src/css/style.css`.
 
 ## TECNOLOGIAS
 
