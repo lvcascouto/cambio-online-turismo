@@ -144,6 +144,7 @@ Compra e venda utilizam os mesmos templates do EmailJS. O conteúdo de cada e-ma
 - Lista de moedas recolhível ("Ver todas as moedas"): no celular e tablet aparecem só as primeiras; no computador só as moedas sem taxa (WhatsApp) ficam recolhidas. A moeda selecionada fica sempre visível;
 - Barra fixa no rodapé em telas de uma coluna (abaixo de 1024 px), com o total da simulação e o botão "Solicitar"; some com o formulário aberto;
 - Avisos informativos do resultado recolhíveis, para não tirar o foco do valor;
+- Resumo "em espera" no card 3. Simulação: antes de simular (e depois de limpar) o quadro do resultado aparece com traços no lugar dos valores, a dica do próximo passo e o botão de solicitar desativado; com a moeda escolhida, a Taxa VET já aparece. O Comparativo só é exibido quando há resultado;
 - Menu de operações com submenu dedicado ao cartão pré-pago;
 - Fluxo simplificado de simulação;
 - Feedback visual para diferentes estados da aplicação;

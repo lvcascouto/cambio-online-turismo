@@ -149,7 +149,7 @@
           <p id="currencyListNote" class="hidden text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 mt-3">Taxas finais, já com IOF incluso.</p>
         </div>
       </section>
-      <section class="lg:col-span-2 glass rounded-2xl p-6 card-hover border border-gray-100 flex flex-col justify-start">
+      <section id="simCard" class="lg:col-span-2 glass rounded-2xl p-6 card-hover border border-gray-100 flex flex-col justify-start">
         <div class="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 class="font-['Raleway'] text-xl font-bold text-gray-800 mb-1">3. Simulação</h2>
@@ -166,6 +166,29 @@
         </div>
         <div class="flex gap-4 mt-6"><button id="convertBtn" class="h-12 rounded-lg btn-primary font-bold flex-1 shadow-md text-gray-700 transform active:scale-95 transition-transform">Simular</button><button id="clearBtn" class="h-12 rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-100 hover:text-gray-700 font-semibold w-24 transition-colors">Limpar</button></div>
         <div id="errorMsg" role="alert" class="text-red-500 text-sm mt-3 hidden font-medium bg-red-50 p-2 rounded border border-red-100 fade-in"></div>
+        <!-- Resumo "em espera": aparece até existir uma simulação (sem espaço em branco) -->
+        <div id="resultPlaceholder" class="mt-6" aria-live="polite">
+          <div class="p-5 rounded-xl border border-dashed border-gold/40 bg-[#fffef9]">
+            <div class="flex items-start gap-2 text-sm font-semibold text-[#8a7a45] mb-4">
+              <i class="ph-bold ph-info text-base mt-0.5 shrink-0"></i><span id="phHint">Escolha a moeda e a quantidade para ver o valor aqui</span>
+            </div>
+            <div id="phLabel" class="text-xs text-gray-400 uppercase tracking-wide">Valor Total (VET)</div>
+            <div class="flex items-baseline gap-2">
+              <div class="text-4xl font-extrabold text-gray-300 tracking-tight">R$ —</div>
+              <div class="text-sm text-gray-300">BRL</div>
+            </div>
+            <div id="phTime" class="text-xs text-gray-300 mt-1">&nbsp;</div>
+            <div class="h-px bg-gray-100 my-4"></div>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between py-1"><span class="text-gray-400">Valor Líquido</span><span class="font-mono text-gray-300">—</span></div>
+              <div class="flex justify-between py-1 border-t border-gray-100 pt-2"><span class="text-gray-400">Cotação Turismo</span><span class="font-mono text-gray-300">—</span></div>
+              <div class="flex justify-between py-1 border-t border-gray-100 pt-2"><span id="phIofLabel" class="text-gray-400">IOF (3,50%)</span><span class="font-mono text-gray-300">—</span></div>
+              <div class="flex justify-between py-1 border-t border-gray-100 pt-2"><span class="text-gray-400">Taxa VET Unitária</span><span id="phVet" class="font-mono text-gray-300">—</span></div>
+            </div>
+          </div>
+          <button type="button" id="phBtn" disabled class="mt-4 w-full h-14 px-4 rounded-xl bg-gray-200 text-gray-400 font-bold text-lg flex items-center justify-center gap-2 cursor-not-allowed">4. Solicitar Câmbio <i class="ph-bold ph-arrow-right text-xl"></i></button>
+          <p class="text-center text-xs text-gray-400 mt-2">O botão libera depois da simulação</p>
+        </div>
         <div id="resultCard" class="mt-6 hidden fade-in">
           <!-- Venda: faixa da taxa (abaixo / a partir de USD 500 ou equivalente) -->
           <div id="sellTierBar" class="hidden mb-4"></div>

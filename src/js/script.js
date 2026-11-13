@@ -372,6 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (ratesUpdatedAt)
       ratesUpdatedAt.textContent = ratesUpdatedLabel;
+    updateResultPlaceholder();
     ratesBadge.classList.remove("hidden");
     ratesBadge.classList.add("flex");
   }
@@ -2284,11 +2285,76 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       if (btn) btn.click();
     };
 
+  // --- RESUMO "EM ESPERA" (antes de simular e depois de limpar) ---
+  // Mostra o quadro do resultado com traços até existir uma simulação, para
+  // o card não ficar vazio. Com a moeda escolhida, a Taxa VET já aparece.
+  function updateResultPlaceholder() {
+    const ph = getEl("resultPlaceholder");
+    if (!ph) return;
+    const hasResult = resultCard && !resultCard.classList.contains("hidden");
+    ph.classList.toggle("hidden", hasResult);
+    // Comparativo só aparece com resultado (e nunca na descarga)
+    getEl("comparisonSection")?.classList.toggle(
+      "hidden",
+      !hasResult || currentMode === "descarga",
+    );
+    if (hasResult) return;
+
+    const isReceive = currentMode === "venda" || currentMode === "descarga";
+    getEl("phLabel").textContent = isReceive
+      ? "Valor Total a Receber"
+      : "Valor Total (VET)";
+    getEl("phIofLabel").textContent =
+      currentMode === "descarga" ? "IOF (0,38%)" : "IOF (3,50%)";
+
+    let btnLabel = "4. Solicitar Câmbio";
+    if (currentMode === "venda") btnLabel = "4. Solicitar Venda";
+    else if (currentMode === "descarga")
+      btnLabel = "Solicitar Descarga no WhatsApp";
+    else if (currentMode === "cartao")
+      btnLabel =
+        cardOp === "recarga"
+          ? "Solicitar Recarga no WhatsApp"
+          : "4. Solicitar Cartão";
+    getEl("phBtn").innerHTML =
+      `${btnLabel} <i class="ph-bold ph-arrow-right text-xl"></i>`;
+
+    const code = fromSel.value;
+    const rate = code ? available[code] : null;
+    const vetEl = getEl("phVet");
+    if (rate && Number(rate.raw) > 0) {
+      vetEl.textContent = `R$ ${formatRate(rate.raw)}`;
+      vetEl.className = "font-mono font-bold text-[#b5a060]";
+    } else if (rate) {
+      vetEl.textContent = "Sob consulta";
+      vetEl.className = "font-mono font-bold text-[#b5a060]";
+    } else {
+      vetEl.textContent = "—";
+      vetEl.className = "font-mono text-gray-300";
+    }
+
+    const amount = parseFloat(amountInput?.value);
+    let hint = "Escolha a moeda e a quantidade para ver o valor aqui";
+    if (code && !(amount > 0))
+      hint = "Agora informe a quantidade e clique em Simular";
+    else if (code && amount > 0) hint = "Clique em Simular para ver o valor";
+    const err = getEl("errorMsg");
+    if (err && !err.classList.contains("hidden") && err.textContent.trim())
+      hint = "Ajuste os dados acima para ver o valor";
+    getEl("phHint").textContent = hint;
+
+    const time = getEl("phTime");
+    time.textContent = ratesUpdatedLabel
+      ? `Cotação de ${ratesUpdatedLabel}`
+      : "\u00a0";
+  }
+
   // Atualiza tudo que depende do estado do simulador
   function refreshFlowUI() {
     if (currentMode) populateCurrencyList();
     updateSteps();
     updateStickyBar();
+    updateResultPlaceholder();
   }
 
   // Depois da primeira simulação, mudar a quantidade recalcula sozinho
@@ -2301,6 +2367,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
           updateDisplayConversion();
         } else {
           updateSteps();
+          updateResultPlaceholder();
         }
       }, 600);
     });
