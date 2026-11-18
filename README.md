@@ -247,7 +247,18 @@ A abordagem também permite uma experiência rápida e interativa, com as princi
 
 Compra e venda compartilham os mesmos dois templates de e-mail. O conteúdo de cada um muda conforme a operação, o que mantém a solução dentro do plano disponível do serviço sem perder a clareza das mensagens.
 
-### Estrutura
+### Acompanhamento das solicitações (Google Apps Script)
+
+Quando o cliente confirma uma solicitação (compra, venda ou carga de cartão), o site também registra os dados básicos numa planilha **privada** da M&A ("Solicitações Conversor M&A"), separada da planilha de cotações, que é pública. O código fica em `apps-script/Codigo.gs`.
+
+- O clique em "Falar com Especialista" muda o status para "Chamou no WhatsApp";
+- 10 minutos sem clique: e-mail de alerta para conversor@maconsultoriacambio.com.br, com o botão "Chamar cliente no WhatsApp", que abre a conversa e marca a solicitação como atendida;
+- 30 minutos sem clique e sem atendimento: status "Encerrada (expirou)" e e-mail de cotação expirada para o cliente (com cópia oculta para a M&A);
+- Registros com mais de 30 dias são apagados automaticamente.
+
+O site só envia os avisos quando a constante `TRACKING_URL` (em `src/js/script.js`) tem a URL do App da Web publicado. Vazia, o recurso fica desligado e o fluxo segue como antes. Os envios usam `navigator.sendBeacon` e nunca travam a solicitação.
+
+## Estrutura
 
 ```text
 cambio-online-turismo/
@@ -265,6 +276,9 @@ cambio-online-turismo/
 ├── dist/
 │   ├── script.min.js       → Versão minificada do JavaScript (produção)
 │   └── style.min.css       → Versão minificada do CSS
+│
+├── apps-script/
+│   └── Codigo.gs           → Acompanhamento das solicitações (colado no Apps Script da planilha privada)
 │
 ├── index.html               → Interface principal
 ├── CNAME                    → Domínio personalizado

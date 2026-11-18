@@ -380,6 +380,46 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentQuote = null;
   // Controle de envio dos e-mails da solicitação (zerado a cada abertura do modal)
   let emailStatus = { admin: false, client: false };
+
+  // --- ACOMPANHAMENTO DAS SOLICITAÇÕES (Google Apps Script) ---
+  // URL do App da Web publicado a partir de apps-script/Codigo.gs, na planilha
+  // PRIVADA "Solicitações Conversor M&A". Vazio = acompanhamento desligado.
+  // O script avisa a M&A se o cliente não chamar no WhatsApp em 10 min e
+  // encerra a solicitação aos 30 min (e-mail de cotação expirada ao cliente).
+  const TRACKING_URL = "https://script.google.com/macros/s/AKfycbx3mvfbokAroFXBagbq6Iw5Kvjt6LB5SJyzVy8BuOJKT91qdv_UXUVwDbPRMTI5T2kk7g/exec";
+  // Uma ID por solicitação (a mesma nas novas tentativas de envio)
+  let requestId = null;
+
+  function newRequestId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function")
+      return window.crypto.randomUUID();
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+
+  // Envia o aviso sem travar o site (se falhar, o fluxo segue normalmente)
+  function trackRequest(payload) {
+    if (!TRACKING_URL || !payload.id) return;
+    const body = JSON.stringify(payload);
+    try {
+      if (
+        navigator.sendBeacon &&
+        navigator.sendBeacon(
+          TRACKING_URL,
+          new Blob([body], { type: "text/plain;charset=UTF-8" }),
+        )
+      )
+        return;
+    } catch (e) {
+      /* segue para o fetch */
+    }
+    fetch(TRACKING_URL, {
+      method: "POST",
+      mode: "no-cors",
+      keepalive: true,
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body,
+    }).catch(() => {});
+  }
   const EMAIL_TIMEOUT_MS = 20000;
 
   // Formatadores
@@ -2675,6 +2715,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
 
     // Nova solicitação: zera o controle de e-mails e qualquer aviso de falha anterior
     emailStatus = { admin: false, client: false };
+    requestId = newRequestId();
     hideSubmitError();
     const submitBtn = budgetForm?.querySelector('button[type="submit"]');
     if (submitBtn) {
@@ -2808,6 +2849,20 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
         const templateAdmin = TEMPLATE_ADMIN;
         const templateCliente = TEMPLATE_CLIENTE;
 
+        // Registra a solicitação no acompanhamento (mesmo se o e-mail falhar,
+        // a M&A recebe o alerta se o cliente não chamar no WhatsApp)
+        trackRequest({
+          action: "nova",
+          id: requestId,
+          nome: name,
+          telefone: phone,
+          email,
+          operacao: getOperationLabel(q),
+          moeda: q.currencyCode,
+          quantidade: formatAmount(q.amount),
+          valor: formatBRL(q.finalTotalBRL || q.totalBRL),
+        });
+
         if (typeof emailjs === "undefined") {
           throw new Error("EmailJS não carregou");
         }
@@ -2937,6 +2992,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     submitBtn.parentNode.insertBefore(box, submitBtn);
 
     getEl("submitErrorWhats").onclick = () => {
+      trackRequest({ action: "whatsapp", id: requestId });
       openWhatsApp(pickOperator(), buildFinalMessage(name, true));
     };
   }
@@ -2950,6 +3006,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     if (!finalWhatsAppBtn || !currentQuote) return;
 
     finalWhatsAppBtn.onclick = () => {
+      trackRequest({ action: "whatsapp", id: requestId });
       openWhatsApp(pickOperator(), buildFinalMessage(name, false));
       setTimeout(() => window.location.reload(), 1000);
     };
