@@ -28,9 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
     [11500000, 11599999], // Cubatão
     [11700000, 11729999], // Praia Grande
   ];
+  // São Paulo capital + ABC seguem a regra normal (grátis a partir de USD 500)
   const SP_CAPITAL_CEP_RANGES = [
     [1000000, 5999999],
     [8000000, 8499999],
+    [9000000, 9999999], // ABC (Santo André, São Bernardo, São Caetano, Diadema, Mauá...)
   ];
 
   // Tabela antiga de isenção de frete — usada só como reserva se a taxa do USD
@@ -2571,7 +2573,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     el.classList.toggle("text-gray-600", !blocked);
     el.innerHTML = blocked
       ? `<i class="ph-bold ph-warning"></i> Para ${BAIXADA_CITIES}, o delivery é feito para operações a partir de <strong>${baixadaMinLabel(currentQuote)}</strong>. Aumente o valor da simulação ou desmarque a entrega para retirar na loja.`
-      : `<i class="ph-bold ph-info"></i> Entrega em ${BAIXADA_CITIES}: taxa de <strong>${formatBRL(BAIXADA_DELIVERY_FEE_BRL)}</strong> (sem isenção), ${BAIXADA_SCHEDULE}.`;
+      : `<i class="ph-bold ph-info"></i> Entrega em ${BAIXADA_CITIES}: taxa de <strong>${formatBRL(BAIXADA_DELIVERY_FEE_BRL)}</strong> (sem isenção), ${BAIXADA_SCHEDULE}. Na Baixada Santista, atendemos somente essas quatro cidades.`;
   }
 
   function updateModalFinance() {
@@ -2726,15 +2728,15 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       "O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen e representa o custo final, incluindo câmbio, impostos (IOF) e tarifas. O cálculo real da operação é a soma do Valor Líquido + Impostos.",
       "A operação está sujeita a disponibilidade de estoque e validação de dados/documento de identificação (é obrigatório o envio de documento válido como RG, RNE ou CNH).",
       "Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.",
-      "Câmbio Delivery em São Paulo (capital): grátis para operações a partir de USD 500,00 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30,00 (consulte a cobertura do seu CEP e a disponibilidade diretamente com um especialista). Sem delivery, a retirada é feita na loja mais próxima do seu CEP.",
-      "Câmbio Delivery em Santos, São Vicente, Praia Grande e Cubatão: somente para operações a partir de USD 1.000,00 (ou equivalente), com taxa de R$ 40,00 (sem isenção). Entrega com dia agendado com a nossa equipe (não é entrega no dia seguinte), das 9h às 17h.",
+      "Câmbio Delivery em São Paulo (capital) e ABC: grátis para operações a partir de USD 500,00 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30,00 (consulte a cobertura do seu CEP e a disponibilidade diretamente com um especialista). Sem delivery, a retirada é feita na loja mais próxima do seu CEP.",
+      "Câmbio Delivery em Santos, São Vicente, Praia Grande e Cubatão: somente para operações a partir de USD 1.000,00 (ou equivalente), com taxa de R$ 40,00 (sem isenção). Entrega com dia agendado com a nossa equipe (não é entrega no dia seguinte), das 9h às 17h. Na Baixada Santista, atendemos somente essas quatro cidades.",
     ],
     cartao: [
       "O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen e representa o custo final, incluindo câmbio, impostos (IOF) e tarifas. O cálculo real da operação é a soma do Valor Líquido + Impostos.",
       "Pela plataforma é solicitada apenas a carga de cartão novo, respeitando o valor mínimo de cada moeda. Recarga e descarga de cartão M&A são feitas pelos menus Recarga e Descarga, direto com um especialista no WhatsApp.",
       "A operação está sujeita a validação de dados/documento de identificação (é obrigatório o envio de documento válido como RG, RNE ou CNH).",
       "Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.",
-      "Câmbio Delivery: disponível para cargas a partir do dobro do valor mínimo da moeda. Em São Paulo (capital), grátis a partir de USD 500,00 (ou equivalente em outra moeda); abaixo disso, taxa de R$ 30,00. Em Santos, São Vicente, Praia Grande e Cubatão, somente a partir de USD 1.000,00 (ou equivalente), com taxa de R$ 40,00 e entrega com dia agendado com a nossa equipe, das 9h às 17h. Para cargas menores, a retirada é feita na loja mais próxima do seu CEP.",
+      "Câmbio Delivery: disponível para cargas a partir do dobro do valor mínimo da moeda. Em São Paulo (capital) e ABC, grátis a partir de USD 500,00 (ou equivalente em outra moeda); abaixo disso, taxa de R$ 30,00. Em Santos, São Vicente, Praia Grande e Cubatão, somente a partir de USD 1.000,00 (ou equivalente), com taxa de R$ 40,00 e entrega com dia agendado com a nossa equipe, das 9h às 17h. Para cargas menores, a retirada é feita na loja mais próxima do seu CEP.",
     ],
     venda: [
       "O valor a receber é a quantidade de moeda multiplicada pela taxa de venda, que já considera o IOF.",
