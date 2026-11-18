@@ -14,6 +14,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const DELIVERY_FREE_MIN_USD = 500;
   const DELIVERY_FEE_BRL = 30;
 
+  // Baixada Santista (Santos, São Vicente, Praia Grande e Cubatão): delivery só
+  // a partir do equivalente a USD 1.000, sempre com taxa de R$ 40 (sem isenção).
+  // Entrega com dia agendado com a M&A (não é no dia seguinte), das 9h às 17h.
+  const BAIXADA_DELIVERY_MIN_USD = 1000;
+  const BAIXADA_DELIVERY_FEE_BRL = 40;
+  const BAIXADA_CITIES = "Santos, São Vicente, Praia Grande e Cubatão";
+  const BAIXADA_SCHEDULE = "com dia agendado com a nossa equipe (não é entrega no dia seguinte), das 9h às 17h";
+  // Faixas de CEP (Correios) usadas só para pré-selecionar a região de entrega
+  const BAIXADA_CEP_RANGES = [
+    [11000000, 11249999], // Santos
+    [11300000, 11399999], // São Vicente
+    [11500000, 11599999], // Cubatão
+    [11700000, 11729999], // Praia Grande
+  ];
+  const SP_CAPITAL_CEP_RANGES = [
+    [1000000, 5999999],
+    [8000000, 8499999],
+  ];
+
   // Tabela antiga de isenção de frete — usada só como reserva se a taxa do USD
   // não estiver disponível (a regra principal é a equivalência em USD acima)
   const DELIVERY_FREE_THRESHOLDS = {
@@ -276,6 +295,42 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // AQUI É A MÁGICA: Recalcula tudo toda vez que o cliente clica!
       updateModalFinance();
+    });
+  }
+
+  // Região de entrega (São Paulo capital x Baixada Santista)
+  const deliveryRegionRadios = document.querySelectorAll(
+    'input[name="deliveryRegion"]',
+  );
+  function getDeliveryRegion() {
+    const r = document.querySelector('input[name="deliveryRegion"]:checked');
+    return r ? r.value : "sp";
+  }
+  function cepRegion(cep) {
+    const n = parseInt(String(cep || "").replace(/\D/g, ""), 10);
+    if (String(cep || "").replace(/\D/g, "").length !== 8 || isNaN(n))
+      return null;
+    const inRanges = (ranges) => ranges.some(([a, b]) => n >= a && n <= b);
+    if (inRanges(BAIXADA_CEP_RANGES)) return "baixada";
+    if (inRanges(SP_CAPITAL_CEP_RANGES)) return "sp";
+    return null;
+  }
+  deliveryRegionRadios.forEach((r) =>
+    r.addEventListener("change", () => updateModalFinance()),
+  );
+  const deliveryCepEl = getEl("deliveryCEP");
+  if (deliveryCepEl) {
+    deliveryCepEl.addEventListener("input", () => {
+      // CEP completo de uma região conhecida já marca a região certa
+      const region = cepRegion(deliveryCepEl.value);
+      if (!region || region === getDeliveryRegion()) return;
+      const radio = document.querySelector(
+        `input[name="deliveryRegion"][value="${region}"]`,
+      );
+      if (radio) {
+        radio.checked = true;
+        updateModalFinance();
+      }
     });
   }
 
@@ -2451,6 +2506,11 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
   // papel-moeda ou cartão). A equivalência usa as taxas da mesma modalidade:
   // quantidade × taxa da moeda  >=  500 × taxa do USD.
   function isDeliveryFree(quote) {
+    return meetsUsdEquivalent(quote, DELIVERY_FREE_MIN_USD);
+  }
+
+  // A operação vale pelo menos `usdMin` dólares? (mesma modalidade de taxa)
+  function meetsUsdEquivalent(quote, usdMin) {
     const ratesObj = quote.mode === "papel" ? ratesPapel : ratesCartao;
     const usdRate = Number(ratesObj.USD?.raw);
     const currencyRate = Number(ratesObj[quote.currencyCode]?.raw);
@@ -2458,13 +2518,28 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     if (usdRate > 0 && currencyRate > 0) {
       // Comparação em centavos inteiros para evitar erro de ponto flutuante
       const operationCents = Math.round(quote.amount * currencyRate * 100);
-      const thresholdCents = Math.round(DELIVERY_FREE_MIN_USD * usdRate * 100);
+      const thresholdCents = Math.round(usdMin * usdRate * 100);
       return operationCents >= thresholdCents;
     }
 
-    // Fallback (taxa do USD indisponível): usa a tabela fixa antiga
+    // Fallback (taxa do USD indisponível): usa a tabela fixa antiga (base USD 500)
     const threshold = DELIVERY_FREE_THRESHOLDS[quote.currencyCode];
-    return !!threshold && quote.amount >= threshold;
+    return !!threshold && quote.amount >= threshold * (usdMin / 500);
+  }
+
+  // Valor mínimo na moeda da operação para o delivery na Baixada Santista
+  function baixadaMinLabel(quote) {
+    if (quote.currencyCode === "USD") return "USD 1.000";
+    return "USD 1.000 (ou equivalente)";
+  }
+
+  function isBaixadaBlocked(quote) {
+    return (
+      deliveryCheck &&
+      deliveryCheck.checked &&
+      getDeliveryRegion() === "baixada" &&
+      !meetsUsdEquivalent(quote, BAIXADA_DELIVERY_MIN_USD)
+    );
   }
 
   // Delivery: venda nunca tem (cédulas vão à loja); carga de cartão só a partir
@@ -2479,6 +2554,26 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     return true;
   }
 
+  // Aviso da Baixada Santista dentro do bloco de delivery
+  function updateBaixadaNotice(isDelivery, isBaixada, blocked) {
+    const el = getEl("baixadaNotice");
+    if (!el) return;
+    if (!isDelivery || !isBaixada) {
+      el.classList.add("hidden");
+      return;
+    }
+    el.classList.remove("hidden");
+    el.classList.toggle("bg-red-50", blocked);
+    el.classList.toggle("border-red-200", blocked);
+    el.classList.toggle("text-red-700", blocked);
+    el.classList.toggle("bg-gray-50", !blocked);
+    el.classList.toggle("border-gray-200", !blocked);
+    el.classList.toggle("text-gray-600", !blocked);
+    el.innerHTML = blocked
+      ? `<i class="ph-bold ph-warning"></i> Para ${BAIXADA_CITIES}, o delivery é feito para operações a partir de <strong>${baixadaMinLabel(currentQuote)}</strong>. Aumente o valor da simulação ou desmarque a entrega para retirar na loja.`
+      : `<i class="ph-bold ph-info"></i> Entrega em ${BAIXADA_CITIES}: taxa de <strong>${formatBRL(BAIXADA_DELIVERY_FEE_BRL)}</strong> (sem isenção), ${BAIXADA_SCHEDULE}.`;
+  }
+
   function updateModalFinance() {
     if (!currentQuote) return;
     const isSell = currentQuote.isSell;
@@ -2490,11 +2585,24 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       deliveryCheck &&
       deliveryCheck.checked;
     let deliveryFee = 0;
+    const isBaixada = isDelivery && getDeliveryRegion() === "baixada";
+    const baixadaBlocked = isDelivery && isBaixadaBlocked(currentQuote);
 
-    // 2. Aplica a regra: frete grátis para operações equivalentes a USD 500 ou mais
-    if (isDelivery) {
-      deliveryFee = isDeliveryFree(currentQuote) ? 0 : DELIVERY_FEE_BRL;
+    // 2. Aplica a regra: São Paulo → grátis a partir de USD 500, senão R$ 30;
+    //    Baixada Santista → sempre R$ 40 (e só a partir de USD 1.000)
+    if (isDelivery && !baixadaBlocked) {
+      deliveryFee = isBaixada
+        ? BAIXADA_DELIVERY_FEE_BRL
+        : isDeliveryFree(currentQuote)
+          ? 0
+          : DELIVERY_FEE_BRL;
     }
+    currentQuote.deliveryRegion = isDelivery
+      ? isBaixada
+        ? "baixada"
+        : "sp"
+      : null;
+    updateBaixadaNotice(isDelivery, isBaixada, baixadaBlocked);
 
     // 3. Salva os dados atualizados no objeto para usarmos no WhatsApp
     currentQuote.deliveryFee = deliveryFee;
@@ -2511,7 +2619,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
 
     // 5. Constrói a linha visual do Frete (só aparece se a caixinha estiver marcada)
     let deliveryHtml = "";
-    if (isDelivery) {
+    if (isDelivery && !baixadaBlocked) {
       const isFree = deliveryFee === 0;
       deliveryHtml = `
         <div class="flex justify-between text-gray-500">
@@ -2618,14 +2726,15 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       "O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen e representa o custo final, incluindo câmbio, impostos (IOF) e tarifas. O cálculo real da operação é a soma do Valor Líquido + Impostos.",
       "A operação está sujeita a disponibilidade de estoque e validação de dados/documento de identificação (é obrigatório o envio de documento válido como RG, RNE ou CNH).",
       "Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.",
-      "Câmbio Delivery: Grátis para operações a partir de USD 500,00 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30,00 (consulte a cobertura do seu CEP e a disponibilidade diretamente com um especialista). Sem delivery, a retirada é feita na loja mais próxima do seu CEP.",
+      "Câmbio Delivery em São Paulo (capital): grátis para operações a partir de USD 500,00 (ou equivalente em outra moeda). Para valores menores, taxa de R$ 30,00 (consulte a cobertura do seu CEP e a disponibilidade diretamente com um especialista). Sem delivery, a retirada é feita na loja mais próxima do seu CEP.",
+      "Câmbio Delivery em Santos, São Vicente, Praia Grande e Cubatão: somente para operações a partir de USD 1.000,00 (ou equivalente), com taxa de R$ 40,00 (sem isenção). Entrega com dia agendado com a nossa equipe (não é entrega no dia seguinte), das 9h às 17h.",
     ],
     cartao: [
       "O Valor Efetivo Total (VET) é um índice médio exibido com 4 casas por norma do Bacen e representa o custo final, incluindo câmbio, impostos (IOF) e tarifas. O cálculo real da operação é a soma do Valor Líquido + Impostos.",
       "Pela plataforma é solicitada apenas a carga de cartão novo, respeitando o valor mínimo de cada moeda. Recarga e descarga de cartão M&A são feitas pelos menus Recarga e Descarga, direto com um especialista no WhatsApp.",
       "A operação está sujeita a validação de dados/documento de identificação (é obrigatório o envio de documento válido como RG, RNE ou CNH).",
       "Valores/taxas sujeitos a alteração até o fechamento efetivo da operação com um de nossos operadores.",
-      "Câmbio Delivery: disponível para cargas a partir do dobro do valor mínimo da moeda. Grátis a partir de USD 500,00 (ou equivalente em outra moeda); abaixo disso, taxa de R$ 30,00. Para cargas menores, a retirada é feita na loja mais próxima do seu CEP.",
+      "Câmbio Delivery: disponível para cargas a partir do dobro do valor mínimo da moeda. Em São Paulo (capital), grátis a partir de USD 500,00 (ou equivalente em outra moeda); abaixo disso, taxa de R$ 30,00. Em Santos, São Vicente, Praia Grande e Cubatão, somente a partir de USD 1.000,00 (ou equivalente), com taxa de R$ 40,00 e entrega com dia agendado com a nossa equipe, das 9h às 17h. Para cargas menores, a retirada é feita na loja mais próxima do seu CEP.",
     ],
     venda: [
       "O valor a receber é a quantidade de moeda multiplicada pela taxa de venda, que já considera o IOF.",
@@ -2707,6 +2816,10 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       const addressInput = document.getElementById("deliveryAddress");
       if (cepInput) cepInput.required = false;
       if (addressInput) addressInput.required = false;
+      const spRadio = document.querySelector(
+        'input[name="deliveryRegion"][value="sp"]',
+      );
+      if (spRadio) spRadio.checked = true;
     }
 
     // 3. Layout conforme a operação + valores (frete, total, taxas)
@@ -2752,6 +2865,8 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
     const isDeliveryChecked =
       isDeliveryAllowed(q) && deliveryCheck && deliveryCheck.checked;
     if (!isDeliveryChecked) return "Não (Retirada na Loja)";
+    if (q.deliveryRegion === "baixada")
+      return `Sim, Baixada Santista (Frete ${formatBRL(q.deliveryFee)}, entrega agendada 9h–17h)`;
     return q.deliveryFee === 0
       ? "Sim (Frete Grátis)"
       : `Sim (Frete ${formatBRL(q.deliveryFee)})`;
@@ -2766,6 +2881,13 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
 
       if (!name || !phone || !email || !currentQuote)
         return showError("Por favor, preencha todos os campos.");
+
+      if (!currentQuote.isSell && isDeliveryAllowed(currentQuote) && isBaixadaBlocked(currentQuote)) {
+        getEl("baixadaNotice")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return showError(
+          `Para ${BAIXADA_CITIES}, o delivery é a partir de ${baixadaMinLabel(currentQuote)}. Aumente o valor ou desmarque a entrega.`,
+        );
+      }
 
       const btn = budgetForm.querySelector('button[type="submit"]');
       const originalContent = btn.innerHTML;
@@ -2962,7 +3084,7 @@ Já sou cliente e gostaria de fazer uma *recarga no meu cartão pré-pago M&A*:
       const isDeliveryChecked =
         isDeliveryAllowed(q) && deliveryCheck && deliveryCheck.checked;
       const deliveryLine = isDeliveryChecked
-        ? `• *Entrega:* Delivery no CEP *${getEl("deliveryCEP").value}* (${q.deliveryFee === 0 ? "frete grátis" : `frete ${formatBRL(q.deliveryFee)}`})`
+        ? `• *Entrega:* Delivery no CEP *${getEl("deliveryCEP").value}* (${q.deliveryRegion === "baixada" ? `Baixada Santista, frete ${formatBRL(q.deliveryFee)}, entrega agendada 9h–17h` : q.deliveryFee === 0 ? "frete grátis" : `frete ${formatBRL(q.deliveryFee)}`})`
         : `• *Entrega:* Retirada na loja mais próxima do meu CEP *${clientCep}*`;
       lines = [
         `• *Operação:* ${getOperationLabel(q)} ${q.mode === "cartao" ? "💳" : "💵"}`,

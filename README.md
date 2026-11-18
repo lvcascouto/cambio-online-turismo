@@ -104,7 +104,8 @@ A aplicação implementa regras específicas para controlar o comportamento de c
 
 **Delivery**
 
-- Grátis para operações a partir do equivalente a USD 500, calculado pelas taxas da própria modalidade; abaixo disso, taxa fixa;
+- São Paulo (capital): grátis para operações a partir do equivalente a USD 500, calculado pelas taxas da própria modalidade; abaixo disso, taxa fixa de R$ 30;
+- Baixada Santista (Santos, São Vicente, Praia Grande e Cubatão): delivery somente a partir do equivalente a USD 1.000, sempre com taxa de R$ 40 (sem isenção), entrega com dia agendado com a M&A (não é no dia seguinte), das 9h às 17h. O cliente escolhe a região no formulário (o CEP completo já pré-seleciona a região); abaixo do mínimo, o envio é bloqueado com aviso;
 - Na carga de cartão, delivery disponível somente a partir do dobro do valor mínimo da moeda;
 - Na venda não há coleta: as cédulas são levadas à loja.
 
