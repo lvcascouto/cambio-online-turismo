@@ -5,6 +5,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
   const IOF_RATE = 0.035;
   const UPDATE_INTERVAL_SECONDS = 600;
+  // Horário de atendimento (segunda a sexta, exceto feriados)
+  const MARKET_OPEN_HOUR = 10;
+  const MARKET_CLOSE_HOUR = 18;
   const SERVICE_ID = "service_bka9lcb";
   const TEMPLATE_ADMIN = "template_9fzmu0n";
   const TEMPLATE_CLIENTE = "template_u5saecn";
@@ -427,8 +430,8 @@ document.addEventListener("DOMContentLoaded", () => {
       ratesBadge.classList.remove("flex");
       return;
     }
-    if (ratesUpdatedAt)
-      ratesUpdatedAt.textContent = ratesUpdatedLabel;
+    lastBadgeState = "";
+    renderMarketBadge();
     updateResultPlaceholder();
     ratesBadge.classList.remove("hidden");
     ratesBadge.classList.add("flex");
@@ -861,8 +864,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (lastUpdate)
       lastUpdate.textContent = ratesUpdatedLabel || formatFetchTime(lastFetchTime);
 
+    renderMarketBadge();
+
     if (nextUpdate) {
-      if (remaining <= 0) {
+      if (!isMarketOpen() && remaining > 0) {
+        nextUpdate.textContent = `mercado fechado · reabre ${nextOpeningLabel()}`;
+      } else if (remaining <= 0) {
         nextUpdate.textContent = "atualizando cotações...";
         clearInterval(countdownInterval);
         fetchSheetRates();
@@ -1094,14 +1101,59 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isBankHoliday(nowSP)) return !1; // Feriado fechado
 
     const hour = nowSP.getHours();
-    const minutes = nowSP.getMinutes();
 
-    // Regra: 09:30 as 18:00
-    if (hour < 9) return !1;
-    if (hour >= 18) return !1;
-    if (hour === 9 && minutes < 30) return !1;
+    // Regra: 10:00 às 18:00 (mesmo horário do site principal e das redes)
+    if (hour < MARKET_OPEN_HOUR) return !1;
+    if (hour >= MARKET_CLOSE_HOUR) return !1;
 
     return !0;
+  }
+
+  // Data/hora "agora" no fuso de São Paulo
+  function nowInSP() {
+    return new Date(
+      new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }),
+    );
+  }
+
+  // Quando o atendimento reabre: "hoje às 10h", "amanhã às 10h", "segunda às 10h"
+  function nextOpeningLabel() {
+    const now = nowInSP();
+    const isBusinessDay = (d) =>
+      d.getDay() !== 0 && d.getDay() !== 6 && !isBankHoliday(d);
+    if (isBusinessDay(now) && now.getHours() < MARKET_OPEN_HOUR)
+      return `hoje às ${MARKET_OPEN_HOUR}h`;
+    const d = new Date(now);
+    for (let i = 1; i <= 10; i++) {
+      d.setDate(d.getDate() + 1);
+      if (!isBusinessDay(d)) continue;
+      if (i === 1) return `amanhã às ${MARKET_OPEN_HOUR}h`;
+      const dia = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"][d.getDay()];
+      return `${dia} às ${MARKET_OPEN_HOUR}h`;
+    }
+    return `no próximo dia útil às ${MARKET_OPEN_HOUR}h`;
+  }
+
+  // Selo do topo: aberto → "Cotações atualizadas · <hora>";
+  // fechado → "Mercado fechado · Reabre <quando>" (sem relógio correndo)
+  let lastBadgeState = "";
+  function renderMarketBadge() {
+    const textEl = getEl("ratesBadgeText");
+    const dotEl = getEl("ratesDot");
+    if (!textEl) return;
+    const open = isMarketOpen();
+    const state = open ? `open|${ratesUpdatedLabel}` : `closed|${nextOpeningLabel()}`;
+    if (state === lastBadgeState) return;
+    lastBadgeState = state;
+    if (open) {
+      textEl.innerHTML = `Cotações atualizadas · <span id="ratesUpdatedAt" class="font-semibold text-white">${ratesUpdatedLabel || "—"}</span>`;
+      if (dotEl)
+        dotEl.innerHTML = `<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>`;
+    } else {
+      textEl.innerHTML = `Mercado fechado · Reabre <span class="font-semibold text-white">${nextOpeningLabel()}</span>`;
+      if (dotEl)
+        dotEl.innerHTML = `<span class="relative inline-flex rounded-full h-2 w-2 bg-gray-400"></span>`;
+    }
   }
 
   function validatePaperAmount(currency, amount) {
@@ -1586,7 +1638,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const CLOSED_ALERT_MSG =
-    "Para solicitar e finalizar sua operação, nosso atendimento funciona de Segunda a Sexta, das 09h30 às 18h00. Fora desse horário (período noturno), finais de semana e feriados, o sistema de solicitação permanece fechado.";
+    "Para solicitar e finalizar sua operação, nosso atendimento funciona de Segunda a Sexta, das 10h às 18h. Fora desse horário (período noturno), finais de semana e feriados, o sistema de solicitação permanece fechado.";
 
   // Troca o botão de ação do resultado. Fora do horário comercial vira
   // "Atendimento Encerrado" (simulação continua liberada).

@@ -111,7 +111,8 @@ A aplicação implementa regras específicas para controlar o comportamento de c
 
 **Atendimento**
 
-- Validação de horário de atendimento (simulações liberadas 24h, solicitações apenas em horário comercial);
+- Validação de horário de atendimento: simulações liberadas 24h; solicitações de segunda a sexta, das 10h às 18h, exceto feriados (`MARKET_OPEN_HOUR` / `MARKET_CLOSE_HOUR`);
+- Fora do horário, o selo do topo mostra "Mercado fechado · Reabre amanhã às 10h" (ou o próximo dia útil), sem relógio correndo. As taxas ficam congeladas no fechamento porque a automação da planilha só atualiza nesse horário;
 - Identificação de finais de semana;
 - Tratamento de feriados nacionais, incluindo feriados com datas móveis;
 - Controle de fuso horário (America/Sao_Paulo).

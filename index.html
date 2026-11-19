@@ -78,11 +78,11 @@
       <div class="flex flex-col items-center lg:items-end gap-2 shrink-0">
         <div id="dataStatus" class="hdr-pill hidden text-white/60 bg-white/5 border border-white/10">Carregando cotações...</div>
         <div id="ratesBadge" class="hdr-pill hidden text-white/80 bg-white/5 border border-white/10" role="status" aria-live="polite">
-          <span class="relative flex h-2 w-2 shrink-0">
+          <span id="ratesDot" class="relative flex h-2 w-2 shrink-0">
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
             <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
           </span>
-          <span>Cotações atualizadas · <span id="ratesUpdatedAt" class="font-semibold text-white">—</span></span>
+          <span id="ratesBadgeText">Cotações atualizadas · <span id="ratesUpdatedAt" class="font-semibold text-white">—</span></span>
         </div>
       </div>
     </div>
@@ -234,7 +234,7 @@
         <h2 class="font-['Raleway'] text-xl md:text-2xl font-bold text-gray-800 text-center mb-5 md:mb-8">Dúvidas Frequentes</h2>
         <div class="space-y-3 md:space-y-4">
           <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-4 md:py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Qual o horário de funcionamento da Plataforma de Câmbio?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
-            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Você pode realizar <strong>simulações 24 horas por dia</strong>, 7 dias por semana. <br> Para <strong>solicitar e finalizar</strong> uma operação (compra, venda, carga ou recarga de cartão), nosso atendimento funciona de <strong>Segunda a Sexta, das 09h30 às 18h00</strong>. Fora desse horário (período noturno), finais de semana e feriados, as solicitações permanecem fechadas. </div>
+            <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> Você pode realizar <strong>simulações 24 horas por dia</strong>, 7 dias por semana. <br> Para <strong>solicitar e finalizar</strong> uma operação (compra, venda, carga ou recarga de cartão), nosso atendimento funciona de <strong>Segunda a Sexta, das 10h às 18h</strong>. Fora desse horário (período noturno), finais de semana e feriados, as solicitações permanecem fechadas. </div>
           </div>
           <div class="border border-gray-200 rounded-lg bg-white overflow-hidden"><button class="font-['Raleway'] w-full flex justify-between items-center px-4 py-4 md:py-6 text-left font-semibold text-gray-800 hover:bg-gray-50 transition-colors focus:outline-none" onclick="toggleFaq(this)" aria-expanded="false"><span>Quais operações posso fazer pela plataforma?</span><i class="ph-bold ph-caret-down text-gold transition-transform duration-300"></i></button>
             <div class="hidden px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-2"> <ul class="list-disc list-inside mt-2 space-y-2">
